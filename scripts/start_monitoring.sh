@@ -108,7 +108,6 @@ docker build -t prometheus-mlops -f Dockerfile.prometheus . --quiet
 docker run -d \
     --name prometheus \
     -p 9090:9090 \
-    --network host \
     prometheus-mlops
 
 echo -e "${GREEN}✅ Prometheus iniciado em http://localhost:9090${NC}"
@@ -126,7 +125,6 @@ docker build -t grafana-mlops -f Dockerfile.grafana . --quiet
 docker run -d \
     --name grafana \
     -p 3000:3000 \
-    --network host \
     grafana-mlops
 
 echo -e "${GREEN}✅ Grafana iniciado em http://localhost:3000${NC}"
