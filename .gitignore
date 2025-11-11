@@ -56,3 +56,18 @@ Thumbs.db
 
 # Environment variables
 .env
+
+# Logs
+logs/*.log
+logs/*.json
+*.log
+
+# Monitoring data
+monitoring/prometheus/data/
+prometheus_data/
+monitoring/grafana/data/
+grafana_data/
+
+# Backups
+*.backup
+*_backup.csv
