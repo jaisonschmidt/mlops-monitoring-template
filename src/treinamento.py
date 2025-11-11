@@ -10,22 +10,15 @@ from pathlib import Path
 # Adicionar src ao path
 sys.path.append(str(Path(__file__).parent.parent))
 
-# Configurar logging
+# Configurar logging e métricas
 from utils.logger import setup_logger, logger
-setup_logger("training")
-
-# Importar métricas
 from utils.metrics import (
-    model_f2_score,
-    model_auc_score,
-    model_precision,
-    model_recall,
-    model_training_duration_seconds,
-    model_training_samples,
     update_model_metrics,
-    set_model_version
+    set_model_version,
+    MODEL_TRAINING_SAMPLES,
+    MODEL_TRAINING_DURATION
 )
-from datetime import datetime
+setup_logger("training")
 
 logger.info("="*60)
 logger.info("Iniciando script de treinamento do modelo")
@@ -149,12 +142,11 @@ start_time = time.time()
 pipeline.fit(X_train, y_train)
 
 training_duration = time.time() - start_time
-model_training_duration_seconds.set(training_duration)
 logger.success(f"Treinamento concluído em {training_duration:.2f} segundos")
 
-# Atualizar métrica de amostras
-total_samples = len(X_train) + len(X_test)
-model_training_samples.set(total_samples)
+# Atualizar métrica Prometheus de duração
+MODEL_TRAINING_DURATION.set(training_duration)
+logger.debug(f"Métrica Prometheus atualizada: training_duration={training_duration:.2f}s")
 
 # métricas de validação
 logger.info("Etapa 9: Calculando métricas de validação")
@@ -175,9 +167,14 @@ logger.info("Métricas calculadas:")
 for metric, value in metricas.items():
     logger.info(f"  {metric}: {value:.4f}")
 
-# Atualizar métricas Prometheus
-update_model_metrics(metricas)
-logger.info("Métricas exportadas para Prometheus")
+# Atualizar métricas do Prometheus
+update_model_metrics(
+    f2_score=metricas["f2_score"],
+    auc_score=metricas["auc"],
+    precision=metricas["precisão"],
+    recall=metricas["recall"]
+)
+logger.success("Métricas exportadas para Prometheus")
 
 metricas_df = pd.DataFrame(metricas, index=range(1)).T
 metricas_df.index.name = "Métricas"
@@ -204,22 +201,20 @@ logger.info(f"Dataset final: {X_final.shape[0]} amostras")
 pipeline.fit(X_final, y_final)
 logger.success("Treinamento final concluído")
 
+# Atualizar métrica de amostras treinadas
+MODEL_TRAINING_SAMPLES.set(X_final.shape[0])
+logger.debug(f"Métrica Prometheus atualizada: training_samples={X_final.shape[0]}")
+
 import joblib
+from datetime import datetime
+model_version = datetime.now().strftime("%Y%m%d_%H%M%S")
 model_path = "models/pipeline_modelo_treinado.joblib"
 joblib.dump(pipeline, model_path)
 logger.success(f"Modelo salvo em: {model_path}")
 
-# Definir informações da versão do modelo
-version_info = {
-    "version": datetime.now().strftime("%Y%m%d_%H%M%S"),
-    "timestamp": datetime.now().isoformat(),
-    "algorithm": "RandomForest",
-    "f2_score": str(metricas['f2_score']),
-    "auc": str(metricas['auc']),
-    "samples": str(total_samples)
-}
-set_model_version(version_info)
-logger.info(f"Versão do modelo: {version_info['version']}")
+# Atualizar versão do modelo no Prometheus
+set_model_version(model_version)
+logger.info(f"Versão do modelo: {model_version}")
 
 logger.info("="*60)
 logger.success("TREINAMENTO CONCLUÍDO COM SUCESSO!")

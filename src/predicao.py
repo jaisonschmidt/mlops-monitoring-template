@@ -11,12 +11,14 @@ from pathlib import Path
 # Adicionar src ao path
 sys.path.append(str(Path(__file__).parent.parent))
 
-# Configurar logging
+# Configurar logging e métricas
 from utils.logger import setup_logger, logger
+from utils.metrics import (
+    MODEL_PREDICTIONS_TOTAL,
+    update_churn_distribution_metrics,
+    CHURN_SCORE_AVERAGE
+)
 setup_logger("prediction")
-
-# Importar métricas
-from utils.metrics import update_churn_distribution_metrics
 
 logger.info("="*60)
 logger.info("Iniciando script de predição")
@@ -43,6 +45,10 @@ logger.info("Etapa 3: Realizando predições")
 preds = pipeline.predict_proba(X)[:,1]
 logger.success(f"Predições realizadas para {len(preds)} clientes")
 
+# Atualizar contador de predições
+MODEL_PREDICTIONS_TOTAL.inc(len(preds))
+logger.debug(f"Contador de predições incrementado: +{len(preds)}")
+
 # preds para DataFrame
 logger.info("Etapa 4: Processando resultados")
 df_preds = pd.DataFrame(preds, index=X.index, columns=["preds"])
@@ -67,9 +73,10 @@ for nivel, count in dist.items():
 score_medio = df_preds['preds'].mean()
 logger.info(f"Score médio de churn: {score_medio:.4f}")
 
-# Atualizar métricas Prometheus de distribuição de churn
-update_churn_distribution_metrics(df_preds)
-logger.info("Métricas de distribuição exportadas para Prometheus")
+# Atualizar métricas Prometheus de distribuição
+update_churn_distribution_metrics(df_preds['preds'].values)
+CHURN_SCORE_AVERAGE.set(score_medio)
+logger.success("Métricas de distribuição de risco atualizadas no Prometheus")
 
 # salvar em .CSV
 output_path = "outputs/predicoes.csv"

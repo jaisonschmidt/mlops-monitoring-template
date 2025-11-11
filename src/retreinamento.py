@@ -8,8 +8,9 @@ from pathlib import Path
 # Adicionar src ao path
 sys.path.append(str(Path(__file__).parent.parent))
 
-# Configurar logging
+# Configurar logging e métricas
 from utils.logger import setup_logger, logger
+from utils.metrics import MODEL_RETRAINING_TOTAL
 setup_logger("retraining")
 
 def retreinar_com_novos_dados(arquivo_novos_dados="data/raw/dados_novos_1.csv"):
@@ -58,6 +59,10 @@ def retreinar_com_novos_dados(arquivo_novos_dados="data/raw/dados_novos_1.csv"):
     logger.info("Etapa 5: Salvando novo arquivo de treino")
     dados_combinados.to_csv("data/raw/dados_treino.csv", index=False)
     logger.success("Arquivo atualizado: data/raw/dados_treino.csv")
+    
+    # Incrementar contador de retreinamentos
+    MODEL_RETRAINING_TOTAL.inc()
+    logger.debug("Contador de retreinamentos incrementado")
     
     logger.info("="*60)
     logger.success("DADOS PREPARADOS PARA RETREINO!")
