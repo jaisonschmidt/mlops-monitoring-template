@@ -1,0 +1,113 @@
+# Regras de Alerta do Prometheus
+
+groups:
+  - name: api_alerts
+    interval: 30s
+    rules:
+      # Alerta: API está down
+      - alert: APIDown
+        expr: up{job="api-churn"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "API de Churn está indisponível"
+          description: "A API não respondeu por mais de 1 minuto."
+      
+      # Alerta: Alta taxa de erro
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) 
+            / 
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Taxa de erro acima de 5%"
+          description: "API está retornando mais de 5% de erros 5xx."
+      
+      # Alerta: Alta latência
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(http_request_duration_seconds_bucket[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Latência P95 acima de 2 segundos"
+          description: "95% das requisições estão levando mais de 2 segundos."
+
+  - name: ml_alerts
+    interval: 1m
+    rules:
+      # Alerta: F2-Score baixo
+      - alert: LowF2Score
+        expr: model_f2_score < 0.7
+        for: 5m
+        labels:
+          severity: warning
+          component: model
+        annotations:
+          summary: "F2-Score do modelo abaixo do aceitável"
+          description: "F2-Score atual: {{ $value }}. Esperado: >= 0.7"
+      
+      # Alerta: AUC baixo
+      - alert: LowAUC
+        expr: model_auc_score < 0.75
+        for: 5m
+        labels:
+          severity: warning
+          component: model
+        annotations:
+          summary: "AUC-ROC do modelo abaixo do aceitável"
+          description: "AUC atual: {{ $value }}. Esperado: >= 0.75"
+      
+      # Alerta: Sem predições
+      - alert: NoPredictions
+        expr: |
+          rate(model_predictions_total[1h]) == 0
+        for: 1h
+        labels:
+          severity: warning
+          component: model
+        annotations:
+          summary: "Nenhuma predição realizada na última hora"
+          description: "O modelo pode não estar sendo usado ou há um problema."
+
+  - name: business_alerts
+    interval: 1m
+    rules:
+      # Alerta: Muitos clientes em alto risco
+      - alert: HighRiskClientsSpike
+        expr: churn_predictions_high_risk > 1000
+        for: 10m
+        labels:
+          severity: critical
+          component: business
+        annotations:
+          summary: "Número elevado de clientes em alto risco de churn"
+          description: "{{ $value }} clientes com risco > 0.7. Investigar causas."
+      
+      # Alerta: Score médio aumentou significativamente
+      - alert: ChurnScoreIncrease
+        expr: |
+          (
+            churn_prediction_score_avg 
+            - 
+            churn_prediction_score_avg offset 1h
+          ) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          component: business
+        annotations:
+          summary: "Score médio de churn aumentou mais de 10%"
+          description: "Possível data drift ou mudança no comportamento dos clientes."

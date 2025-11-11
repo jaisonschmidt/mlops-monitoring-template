@@ -1,0 +1,28 @@
+# Configuração do Prometheus Server
+
+global:
+  scrape_interval: 15s      # Coletar métricas a cada 15 segundos
+  evaluation_interval: 15s  # Avaliar regras a cada 15 segundos
+  external_labels:
+    monitor: 'mlops-churn-monitor'
+    environment: 'development'
+
+# Configuração de alertas (carrega regras de alert_rules.yml)
+rule_files:
+  - 'alert_rules.yml'
+
+# Configuração de scraping (coleta de métricas)
+scrape_configs:
+  # Job para a API de Churn
+  - job_name: 'api-churn'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    honor_labels: true
+    
+  # Job para o próprio Prometheus (auto-monitoramento)
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

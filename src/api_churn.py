@@ -20,6 +20,15 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.logger import setup_logger, logger
 setup_logger("api")
 
+# Configurar métricas Prometheus
+from prometheus_fastapi_instrumentator import Instrumentator
+from utils.metrics import (
+    api_predictions_loaded,
+    update_churn_distribution_metrics,
+    model_predictions_total,
+    churn_predictions_high_risk,
+)
+
 # Inicializar FastAPI
 app = FastAPI(
     title="API de Predição de Churn",
@@ -28,6 +37,20 @@ app = FastAPI(
 )
 
 logger.info("API FastAPI inicializada")
+
+# Instrumentar API com Prometheus
+instrumentator = Instrumentator(
+    should_group_status_codes=False,
+    should_ignore_untemplated=True,
+    should_respect_env_var=True,
+    should_instrument_requests_inprogress=True,
+    excluded_handlers=["/metrics"],
+    inprogress_name="http_requests_inprogress",
+    inprogress_labels=True,
+)
+
+instrumentator.instrument(app).expose(app, endpoint="/metrics", include_in_schema=True)
+logger.info("Instrumentação Prometheus ativada em /metrics")
 
 # Caminho para o arquivo de predições
 PREDICOES_PATH = Path(__file__).parent.parent / "outputs" / "predicoes.csv"
@@ -43,12 +66,22 @@ def carregar_predicoes():
         logger.info(f"Carregando predições de: {PREDICOES_PATH}")
         predicoes_df = pd.read_csv(PREDICOES_PATH)
         logger.success(f"Arquivo de predições carregado: {len(predicoes_df)} registros")
+        
+        # Atualizar métrica Prometheus
+        api_predictions_loaded.set(len(predicoes_df))
+        
+        # Atualizar métricas de distribuição de churn
+        update_churn_distribution_metrics(predicoes_df)
+        logger.info("Métricas de distribuição de churn atualizadas")
+        
     except FileNotFoundError:
         logger.error(f"Arquivo não encontrado: {PREDICOES_PATH}")
         predicoes_df = None
+        api_predictions_loaded.set(0)
     except Exception as e:
         logger.exception(f"Erro ao carregar predições: {e}")
         predicoes_df = None
+        api_predictions_loaded.set(0)
 
 
 # Carregar dados na inicialização
@@ -125,6 +158,9 @@ async def obter_churn_cliente(id_cliente: int):
         Informações sobre o risco de churn do cliente
     """
     logger.info(f"Consulta de churn solicitada para cliente: {id_cliente}")
+    
+    # Incrementar contador de predições
+    model_predictions_total.labels(endpoint="/churn/{id}").inc()
     
     if predicoes_df is None:
         logger.error("Tentativa de consulta sem dados carregados")

@@ -1,0 +1,18 @@
+FROM prom/prometheus:v2.48.0
+
+# Copiar arquivos de configuração
+COPY prometheus.yml /etc/prometheus/prometheus.yml
+COPY alert_rules.yml /etc/prometheus/alert_rules.yml
+
+# Expor porta do Prometheus
+EXPOSE 9090
+
+# Volume para dados
+VOLUME ["/prometheus"]
+
+# Comando de inicialização
+CMD ["--config.file=/etc/prometheus/prometheus.yml", \
+     "--storage.tsdb.path=/prometheus", \
+     "--web.console.libraries=/usr/share/prometheus/console_libraries", \
+     "--web.console.templates=/usr/share/prometheus/consoles", \
+     "--web.enable-lifecycle"]
