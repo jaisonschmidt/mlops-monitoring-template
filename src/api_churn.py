@@ -11,6 +11,14 @@ from pydantic import BaseModel
 import pandas as pd
 from pathlib import Path
 from typing import Optional
+import sys
+
+# Adicionar src ao path para imports
+sys.path.append(str(Path(__file__).parent.parent))
+
+# Configurar logging
+from utils.logger import setup_logger, logger
+setup_logger("api")
 
 # Inicializar FastAPI
 app = FastAPI(
@@ -18,6 +26,8 @@ app = FastAPI(
     description="API para consultar risco de churn de clientes",
     version="1.0.0"
 )
+
+logger.info("API FastAPI inicializada")
 
 # Caminho para o arquivo de predições
 PREDICOES_PATH = Path(__file__).parent.parent / "outputs" / "predicoes.csv"
@@ -30,13 +40,14 @@ def carregar_predicoes():
     """Carrega o arquivo de predições em memória"""
     global predicoes_df
     try:
+        logger.info(f"Carregando predições de: {PREDICOES_PATH}")
         predicoes_df = pd.read_csv(PREDICOES_PATH)
-        print(f"✓ Arquivo de predições carregado: {len(predicoes_df)} registros")
+        logger.success(f"Arquivo de predições carregado: {len(predicoes_df)} registros")
     except FileNotFoundError:
-        print(f"✗ Arquivo não encontrado: {PREDICOES_PATH}")
+        logger.error(f"Arquivo não encontrado: {PREDICOES_PATH}")
         predicoes_df = None
     except Exception as e:
-        print(f"✗ Erro ao carregar predições: {e}")
+        logger.exception(f"Erro ao carregar predições: {e}")
         predicoes_df = None
 
 
@@ -44,7 +55,9 @@ def carregar_predicoes():
 @app.on_event("startup")
 async def startup_event():
     """Evento executado na inicialização da API"""
+    logger.info("Iniciando API - Evento de startup")
     carregar_predicoes()
+    logger.info("API pronta para receber requisições")
 
 
 # Modelos de resposta
@@ -82,15 +95,21 @@ async def root():
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
     """Verifica o status da API e dos dados"""
+    logger.debug("Health check solicitado")
+    
     if predicoes_df is None:
+        logger.warning("Health check falhou - Dados não carregados")
         raise HTTPException(
             status_code=503,
             detail="Serviço indisponível - Dados de predição não carregados"
         )
     
+    total = len(predicoes_df)
+    logger.info(f"Health check OK - {total} predições disponíveis")
+    
     return HealthResponse(
         status="OK",
-        total_predicoes=len(predicoes_df)
+        total_predicoes=total
     )
 
 
@@ -105,7 +124,10 @@ async def obter_churn_cliente(id_cliente: int):
     Returns:
         Informações sobre o risco de churn do cliente
     """
+    logger.info(f"Consulta de churn solicitada para cliente: {id_cliente}")
+    
     if predicoes_df is None:
+        logger.error("Tentativa de consulta sem dados carregados")
         raise HTTPException(
             status_code=503,
             detail="Serviço indisponível - Dados não carregados"
@@ -115,6 +137,7 @@ async def obter_churn_cliente(id_cliente: int):
     cliente = predicoes_df[predicoes_df['id_cliente'] == id_cliente]
     
     if cliente.empty:
+        logger.warning(f"Cliente não encontrado: {id_cliente}")
         raise HTTPException(
             status_code=404,
             detail=f"Cliente com ID {id_cliente} não encontrado"
@@ -135,6 +158,16 @@ async def obter_churn_cliente(id_cliente: int):
         nivel_risco = "MÉDIO"
     else:
         nivel_risco = "ALTO"
+    
+    logger.success(
+        f"Consulta concluída para cliente {id_cliente}",
+        extra={
+            "id_cliente": id_cliente,
+            "risco": risco,
+            "nivel": nivel_risco,
+            "classificacao": classificacao
+        }
+    )
     
     return ChurnResponse(
         id_cliente=id_cliente,
@@ -208,20 +241,26 @@ async def recarregar_dados():
     
     Útil quando o arquivo de predições é atualizado
     """
+    logger.info("Solicitação de recarga de dados")
     carregar_predicoes()
     
     if predicoes_df is None:
+        logger.error("Falha ao recarregar dados")
         raise HTTPException(
             status_code=500,
             detail="Erro ao recarregar dados"
         )
     
+    total = len(predicoes_df)
+    logger.success(f"Dados recarregados com sucesso: {total} registros")
+    
     return {
         'status': 'Dados recarregados com sucesso',
-        'total_registros': len(predicoes_df)
+        'total_registros': total
     }
 
 
 if __name__ == "__main__":
     import uvicorn
+    logger.info("Iniciando servidor Uvicorn")
     uvicorn.run(app, host="0.0.0.0", port=8000)
