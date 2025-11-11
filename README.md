@@ -1,32 +1,174 @@
-# MLOps - Modelo de Predição de Evasão de Clientes (Churn)
+# MLOps - Modelo de Predição de Evasão de Clientes (Churn) �
+
+[![Python](https://img.shields.io/badge/Python-3.x-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green.svg)](https://fastapi.tiangolo.com/)
+[![Prometheus](https://img.shields.io/badge/Prometheus-2.47-orange.svg)](https://prometheus.io/)
+[![Grafana](https://img.shields.io/badge/Grafana-10.2-red.svg)](https://grafana.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
+
+**Sistema completo de MLOps** com monitoramento em tempo real usando **Prometheus** e **Grafana**!
 
 ## 📋 Índice
 
-- [Descrição do Projeto](#-descrição-do-projeto)
-- [Estrutura do Projeto](#-estrutura-do-projeto)
-- [API de Predição de Churn](#-api-de-predição-de-churn)
-- [Tecnologias Utilizadas](#-tecnologias-utilizadas)
-- [Como Usar](#-como-usar)
-  - [Instalação Local](#instalação)
-  - [Treinamento do Modelo](#treinamento-do-modelo)
-  - [Predição em Novos Dados](#predição-em-novos-dados)
-- [Usando Docker](#-usando-docker)
-  - [Treinar o Modelo com Docker](#1-treinar-o-modelo-com-docker)
-  - [Fazer Predições com Docker](#2-fazer-predições-com-docker)
-  - [Subir a API com Docker](#3-subir-a-api-com-docker)
-  - [Exemplo Completo](#exemplo-completo-fluxo-de-trabalho-com-docker)
-- [Retreinamento do Modelo](#-retreinamento-do-modelo)
-- [Pipeline de ML](#-pipeline-de-ml)
-- [Métricas de Avaliação](#-métricas-de-avaliação)
-- [Contribuindo](#-contribuindo)
+- [🎯 Sobre o Projeto](#-sobre-o-projeto)
+- [✨ Recursos de Monitoramento](#-recursos-de-monitoramento)
+- [📁 Estrutura do Projeto](#-estrutura-do-projeto)
+- [🚀 Quick Start](#-quick-start)
+- [📊 Monitoramento](#-monitoramento)
+- [🌐 API de Predição](#-api-de-predição)
+- [🔧 Tecnologias](#-tecnologias)
+- [📚 Tutoriais](#-tutoriais)
+- [🐳 Docker](#-docker)
+- [📈 Pipeline de ML](#-pipeline-de-ml)
+- [🤝 Contribuindo](#-contribuindo)
 
-## 📋 Descrição do Projeto
+## 🎯 Sobre o Projeto
 
-Este projeto implementa um pipeline completo de Machine Learning para predição de evasão de clientes bancários (churn). O sistema utiliza Random Forest com balanceamento SMOTE e otimização de limiar de decisão para classificar o risco de evasão de clientes.
+Este projeto implementa um **pipeline completo de MLOps** para predição de evasão de clientes bancários (churn). O sistema utiliza:
 
-## 🎯 Objetivo
+- 🤖 **Random Forest** com balanceamento SMOTE
+- 📡 **API REST** com FastAPI
+- 📊 **Monitoramento** com Prometheus + Grafana
+- 📝 **Logging estruturado** com Loguru
+- 🐳 **Containerização** com Docker
 
-Desenvolver um modelo preditivo que identifica clientes com maior probabilidade de deixar o banco, permitindo ações preventivas de retenção.
+**Ideal para aprendizado de MLOps em ambiente acadêmico!**
+
+## ✨ Recursos de Monitoramento
+
+### 📊 Stack de Observabilidade Completa
+
+- **📝 Loguru**: Logging estruturado com rotação automática
+- **📈 Prometheus**: Coleta e armazenamento de métricas
+- **📊 Grafana**: 4 dashboards profissionais pré-configurados
+- **🔔 Alertas**: 5 alertas automáticos para problemas críticos
+
+### 📊 Dashboards Disponíveis
+
+| Dashboard | Descrição | Usuário |
+|-----------|-----------|---------|
+| 🎯 **System Overview** | Visão executiva geral | CEO/Gestores |
+| 🚀 **API Health** | Performance da API | DevOps/SRE |
+| 🤖 **ML Metrics** | Qualidade do modelo | Data Scientists |
+| 💼 **Business Churn** | KPIs de negócio | Analistas |
+
+### 📏 Métricas Coletadas
+
+**Infraestrutura (17 métricas)**
+- Taxa de requisições, latência, erros
+- Uptime, requests ativas
+- Tempo de resposta P50/P95/P99
+
+**Machine Learning (6 métricas)**
+- F2-Score, AUC-ROC, Precision, Recall
+- Duração de treinamento
+- Total de amostras
+
+**Negócio (5 métricas)**
+- Clientes em alto/médio/baixo risco
+- Score médio de churn
+- Distribuição de predições
+
+## 🚀 Quick Start
+
+### Opção 1: Iniciar Tudo com 1 Comando 🎯
+
+```bash
+# Clonar repositório
+git clone https://github.com/seu-usuario/mlops-monitoring-prep.git
+cd mlops-monitoring-prep
+
+# Iniciar stack completa (API + Prometheus + Grafana)
+./scripts/start_monitoring.sh
+```
+
+**Acessar:**
+- 🌐 **API**: http://localhost:8000/docs
+- 📊 **Prometheus**: http://localhost:9090
+- 📈 **Grafana**: http://localhost:3000 (admin/admin)
+
+### Opção 2: Passo a Passo Manual
+
+```bash
+# 1. Criar ambiente virtual
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate   # Windows
+
+# 2. Instalar dependências
+pip install -r requirements.txt
+
+# 3. Treinar modelo
+python src/treinamento.py
+
+# 4. Fazer predições
+python src/predicao.py
+
+# 5. Subir API
+uvicorn src.api_churn:app --host 0.0.0.0 --port 8000
+
+# 6. Testar com carga
+python scripts/test_api_load.py
+```
+
+## 📊 Monitoramento
+
+### Arquitetura de Monitoramento
+
+```
+┌─────────────┐
+│ Treinamento │──┐
+│  Predição   │  │ Loguru
+│ Retreinamento│  │ (logs/)
+└─────────────┘  │
+                 ▼
+┌─────────────┐  ┌──────────┐  ┌─────────┐
+│  API Churn  │─→│Prometheus│←─│ Grafana │
+│   :8000     │  │  :9090   │  │  :3000  │
+└─────────────┘  └──────────┘  └─────────┘
+    /metrics       scrape        dashboards
+```
+
+### Ver Dashboards
+
+1. **Iniciar stack**: `./scripts/start_monitoring.sh`
+2. **Acessar Grafana**: http://localhost:3000
+3. **Login**: admin / admin
+4. **Selecionar** dashboard desejado
+5. **Gerar métricas**: `python scripts/test_api_load.py`
+
+### Consultar Métricas
+
+```bash
+# Diretamente no Prometheus
+curl http://localhost:9090/api/v1/query?query=model_f2_score
+
+# Endpoint de métricas da API
+curl http://localhost:8000/metrics
+
+# Exportar para arquivo
+python scripts/export_metrics.py
+```
+
+### Alertas Configurados
+
+| Alerta | Condição | Severidade |
+|--------|----------|------------|
+| 🔴 **APIDown** | API offline > 1min | Critical |
+| 🟠 **HighErrorRate** | Erros > 5% | Warning |
+| 🟡 **HighLatency** | P95 > 500ms | Warning |
+| 🟠 **ModelDegraded** | F2-Score < 0.7 | Warning |
+| 🟡 **HighChurnRisk** | Alto risco > 1000 | Info |
+
+### Parar Monitoramento
+
+```bash
+# Parar todos containers
+./scripts/stop_monitoring.sh
+
+# Parar e limpar tudo
+./scripts/stop_monitoring.sh --clean
+```
 
 ## 📁 Estrutura do Projeto
 
@@ -91,14 +233,61 @@ uvicorn src.api_churn:app --host 0.0.0.0 --port 8000 --reload
 - `GET /docs` - Documentação interativa (Swagger)
 
 
-## 🔧 Tecnologias Utilizadas
+## � Tutoriais
 
+### Guias Completos para Alunos
+
+| Tutorial | Descrição | Tempo estimado |
+|----------|-----------|----------------|
+| 📊 [**PROMETHEUS.md**](tutorial/PROMETHEUS.md) | Como usar Prometheus, PromQL, alertas | 45 min |
+| 📈 [**GRAFANA.md**](tutorial/GRAFANA.md) | Dashboards, painéis, visualizações | 60 min |
+| 🐳 [**DOCKER_API.md**](tutorial/DOCKER_API.md) | Containers, builds, deploy | 30 min |
+| 🌐 [**API_CHURN_README.md**](tutorial/API_CHURN_README.md) | Endpoints, FastAPI, testes | 30 min |
+
+### Planejamento de Implementação
+
+📋 **[PLANEJAMENTO_MONITORAMENTO.md](monitoring/PLANEJAMENTO_MONITORAMENTO.md)**
+- Visão geral de 6 passos de implementação
+- Métricas definidas e categorizadas
+- Arquitetura de monitoramento
+- Timeline de desenvolvimento
+
+### Exercícios Práticos
+
+Todos os tutoriais incluem:
+- ✅ Conceitos teóricos explicados
+- ✅ Exemplos práticos passo a passo
+- ✅ Exercícios com soluções
+- ✅ Troubleshooting de problemas comuns
+
+## 🔧 Tecnologias
+
+### Machine Learning
 - **Python 3.x**
 - **pandas** - Manipulação de dados
 - **numpy** - Operações numéricas
 - **scikit-learn** - Algoritmos de ML e pré-processamento
 - **imbalanced-learn** - Tratamento de classes desbalanceadas (SMOTE)
 - **joblib** - Serialização de modelos
+
+### API & Web
+- **FastAPI** - Framework REST moderno e rápido
+- **uvicorn** - Servidor ASGI de alta performance
+- **pydantic** - Validação de dados com type hints
+
+### Monitoramento & Observabilidade
+- **Loguru 0.7.0+** - Logging estruturado com cores e rotação
+- **Prometheus 2.47+** - Coleta e armazenamento de métricas
+  - `prometheus-client` - Cliente Python
+  - `prometheus-fastapi-instrumentator` - Instrumentação automática
+- **Grafana 10.2+** - Visualização e dashboards
+  - Auto-provisioning de datasources
+  - 4 dashboards pré-configurados
+
+### Infrastructure
+- **Docker** - Containerização
+- **Docker Compose** - Orquestração (opcional)
+- **Git** - Controle de versão
 
 ## 📊 Variáveis do Dataset
 
@@ -477,9 +666,68 @@ Classificação de desempenho:
 - ⚡ Fraco: > 0.60
 - ❌ Ruim: < 0.60
 
-##  Contribuindo
+## 🤝 Contribuindo
 
 Contribuições são bem-vindas! Sinta-se livre para abrir issues ou pull requests.
+
+## 👨‍🏫 Para Instrutores
+
+### Estrutura Pedagógica
+
+Este projeto foi desenvolvido para ensino de MLOps seguindo 6 passos incrementais:
+
+| Passo | Tópico | Duração | Objetivos |
+|-------|--------|---------|-----------|
+| **1** | Preparação do Ambiente | 30min | Dependencies, configs |
+| **2** | Implementação do Loguru | 45min | Structured logging |
+| **3** | Implementação do Prometheus | 60min | Metrics collection |
+| **4** | Implementação do Grafana | 90min | Dashboards, visualization |
+| **5** | Instrumentação ML | 45min | Model metrics |
+| **6** | Integração e Testes | 60min | E2E testing |
+
+**Total**: ~5.5 horas (pode ser dividido em 3 aulas de 2h)
+
+### Commits Organizados
+
+Cada passo possui um commit dedicado para facilitar o ensino incremental:
+
+```bash
+git log --oneline --graph
+# * d0d92e3 feat: PASSO 6 - Integração, testes e documentação
+# * e808d6b feat: PASSO 5 - Instrumentação de métricas ML
+# * 493064b feat: PASSO 4 - Implementação do Grafana
+# * d4a4655 feat: PASSO 3 - Implementação do Prometheus
+# * 231314c feat: PASSO 2 - Implementação do Loguru
+# * f8ba800 feat: PASSO 1 - Preparação do ambiente
+```
+
+### Sugestões de Aula
+
+**Aula 1 - Fundamentos (2h)**
+- Passos 1 e 2: Logging estruturado
+- Discussão: Por que monitoramento é importante?
+
+**Aula 2 - Métricas (2h)**  
+- Passos 3 e 4: Prometheus e Grafana
+- Prática: Criar queries PromQL
+
+**Aula 3 - Integração (2h)**
+- Passos 5 e 6: Instrumentação e testes
+- Projeto: Adicionar nova métrica personalizada
+
+### Exercícios Propostos
+
+1. **Básico**: Adicionar nova métrica de "tempo de carregamento de modelo"
+2. **Intermediário**: Criar dashboard personalizado com métricas específicas
+3. **Avançado**: Implementar alerta customizado com notificação Slack
+4. **Projeto**: Integrar com MLflow para tracking de experimentos
+
+## 📊 Histórico de Versões
+
+- **v1.0** - Sistema MLOps completo com monitoramento
+- **v0.3** - Adicionado Grafana e dashboards
+- **v0.2** - Adicionado Prometheus e métricas
+- **v0.1** - API básica de churn
 
 ## 📝 Licença
 
@@ -491,4 +739,6 @@ Para dúvidas ou sugestões, abra uma issue no repositório.
 
 ---
 
-**Desenvolvido com ❤️ para aprendizado em MLOps**
+**Desenvolvido com ❤️ para ensino de MLOps**
+
+> 💡 **Dica para alunos**: Comece pelos tutoriais em `tutorial/` antes de mexer no código!
