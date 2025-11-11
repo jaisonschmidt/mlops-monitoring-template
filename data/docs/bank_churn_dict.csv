@@ -1,0 +1,12 @@
+variavel,descricao_trad
+id_cliente,Identificador único do cliente
+pais,"País de residência (frança, espanha ou alemanha)"
+genero,"Gênero do cliente (masculino, feminino)"
+idade,Idade do cliente (em anos)
+anos_cliente,Número de anos em que o cliente está com o banco
+saldo_conta,Saldo da conta
+numero_produtos,"Número de produtos usados pelo cliente (poupança, cartão etc)"
+cartao_credito,O cliente tem um cartão de crédito? (1 = Sim; 0 = Não)
+salario_estimado,Salário estimado do cliente
+saiu,O cliente saiu do banco? (1 = Sim; 0 = Não)
+escore_credito,Escore de crédito do cliente

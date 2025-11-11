@@ -1,0 +1,52 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+.pytest_cache
+.coverage
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation (não necessário no container)
+*.md
+tutorial/
+
+# Dados de treino (manter apenas predições)
+data/raw/
+data/docs/
+
+# Modelos (não necessário para a API de predições)
+models/
+
+# Outros scripts (manter apenas api_churn.py)
+src/treinamento.py
+src/retreinamento.py
+src/predicao.py
+
+# Tests
+test_*.py
+*_test.py

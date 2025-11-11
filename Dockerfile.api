@@ -1,0 +1,24 @@
+# Dockerfile para API de Predição de Churn
+FROM python:3.11-slim
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Copiar apenas o requirements.txt primeiro (para cache de camadas)
+COPY requirements.txt .
+
+# Instalar dependências
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar código-fonte da API e dados necessários
+COPY src/api_churn.py src/
+COPY outputs/predicoes.csv outputs/
+
+# Expor porta da API
+EXPOSE 8000
+
+# Variáveis de ambiente
+ENV PYTHONUNBUFFERED=1
+
+# Comando para iniciar a API
+CMD ["uvicorn", "src.api_churn:app", "--host", "0.0.0.0", "--port", "8000"]
