@@ -15,6 +15,9 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.logger import setup_logger, logger
 setup_logger("prediction")
 
+# Importar métricas
+from utils.metrics import update_churn_distribution_metrics
+
 logger.info("="*60)
 logger.info("Iniciando script de predição")
 logger.info("="*60)
@@ -63,6 +66,10 @@ for nivel, count in dist.items():
 
 score_medio = df_preds['preds'].mean()
 logger.info(f"Score médio de churn: {score_medio:.4f}")
+
+# Atualizar métricas Prometheus de distribuição de churn
+update_churn_distribution_metrics(df_preds)
+logger.info("Métricas de distribuição exportadas para Prometheus")
 
 # salvar em .CSV
 output_path = "outputs/predicoes.csv"
