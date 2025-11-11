@@ -10,8 +10,15 @@ COPY requirements.txt .
 # Instalar dependências
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar código-fonte da API e dados necessários
+# Copiar código-fonte da API e utilitários
 COPY src/api_churn.py src/
+COPY src/utils/ src/utils/
+COPY config/ config/
+
+# Criar diretórios necessários
+RUN mkdir -p outputs logs
+
+# Copiar predições (devem existir após execução do script)
 COPY outputs/predicoes.csv outputs/
 
 # Expor porta da API

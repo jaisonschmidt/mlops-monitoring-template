@@ -1,29 +1,12 @@
 FROM grafana/grafana:10.2.0
 
-# Definir usuário root temporariamente para configurações
-USER root
-
 # Copiar arquivo de configuração
-COPY grafana.ini /etc/grafana/grafana.ini
+COPY --chown=472:0 grafana.ini /etc/grafana/grafana.ini
 
 # Copiar provisioning
-COPY provisioning /etc/grafana/provisioning
-
-# Criar diretórios necessários
-RUN mkdir -p /var/lib/grafana && \
-    mkdir -p /var/log/grafana && \
-    chown -R grafana:grafana /var/lib/grafana && \
-    chown -R grafana:grafana /var/log/grafana && \
-    chown -R grafana:grafana /etc/grafana
-
-# Voltar para usuário grafana
-USER grafana
+COPY --chown=472:0 provisioning /etc/grafana/provisioning
 
 # Expor porta
 EXPOSE 3000
 
-# Volume para persistência
-VOLUME ["/var/lib/grafana"]
-
-# Comando padrão
-CMD ["/run.sh"]
+# Comando padrão já definido na imagem base

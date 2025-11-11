@@ -37,7 +37,59 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 echo ""
-echo -e "${BLUE}📦 Etapa 1: Limpando containers antigos${NC}"
+echo -e "${BLUE}📦 Etapa 1: Preparando modelo e predições${NC}"
+
+# Verificar se Python está disponível
+if ! command -v python3 &> /dev/null; then
+    echo -e "${YELLOW}⚠️  Python3 não encontrado. Tentando usar python...${NC}"
+    PYTHON_CMD="python"
+else
+    PYTHON_CMD="python3"
+fi
+
+# Verificar se dependências estão instaladas
+echo -e "${YELLOW}📚 Verificando dependências Python...${NC}"
+$PYTHON_CMD -c "import loguru" &> /dev/null
+if [ $? -ne 0 ]; then
+    echo -e "${YELLOW}📦 Instalando dependências...${NC}"
+    $PYTHON_CMD -m pip install -q -r requirements.txt
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ Dependências instaladas${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Erro ao instalar dependências. Tentando continuar...${NC}"
+    fi
+else
+    echo -e "${GREEN}✅ Dependências já instaladas${NC}"
+fi
+
+# Verificar se modelo existe
+if [ ! -f "models/pipeline_modelo_treinado.joblib" ]; then
+    echo -e "${YELLOW}📚 Modelo não encontrado. Treinando modelo...${NC}"
+    $PYTHON_CMD src/treinamento.py
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ Modelo treinado com sucesso${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Erro ao treinar modelo, mas continuando...${NC}"
+    fi
+else
+    echo -e "${GREEN}✅ Modelo já existe${NC}"
+fi
+
+# Verificar se predições existem
+if [ ! -f "outputs/predicoes.csv" ]; then
+    echo -e "${YELLOW}🔮 Predições não encontradas. Gerando predições...${NC}"
+    $PYTHON_CMD src/predicao.py
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ Predições geradas com sucesso${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Erro ao gerar predições, mas continuando...${NC}"
+    fi
+else
+    echo -e "${GREEN}✅ Predições já existem${NC}"
+fi
+
+echo ""
+echo -e "${BLUE}📦 Etapa 2: Limpando containers antigos${NC}"
 cleanup_container "prometheus"
 cleanup_container "grafana"
 cleanup_container "api-churn"
@@ -45,7 +97,7 @@ echo -e "${GREEN}✅ Limpeza concluída${NC}"
 
 # Build e start Prometheus
 echo ""
-echo -e "${BLUE}📦 Etapa 2: Iniciando Prometheus${NC}"
+echo -e "${BLUE}📦 Etapa 3: Iniciando Prometheus${NC}"
 cd monitoring/prometheus
 if [ ! -f "Dockerfile.prometheus" ]; then
     echo "❌ Dockerfile.prometheus não encontrado!"
@@ -63,7 +115,7 @@ echo -e "${GREEN}✅ Prometheus iniciado em http://localhost:9090${NC}"
 
 # Build e start Grafana
 echo ""
-echo -e "${BLUE}📊 Etapa 3: Iniciando Grafana${NC}"
+echo -e "${BLUE}📊 Etapa 4: Iniciando Grafana${NC}"
 cd ../grafana
 if [ ! -f "Dockerfile.grafana" ]; then
     echo "❌ Dockerfile.grafana não encontrado!"
@@ -82,7 +134,7 @@ echo -e "   Credenciais: ${YELLOW}admin / admin${NC}"
 
 # Build e start API
 echo ""
-echo -e "${BLUE}🚀 Etapa 4: Iniciando API de Churn${NC}"
+echo -e "${BLUE}🚀 Etapa 5: Iniciando API de Churn${NC}"
 cd "$PROJECT_ROOT"
 if [ ! -f "Dockerfile.api" ]; then
     echo "❌ Dockerfile.api não encontrado!"
@@ -105,7 +157,7 @@ sleep 10
 
 # Verificar saúde dos containers
 echo ""
-echo -e "${BLUE}🔍 Etapa 5: Verificando saúde dos containers${NC}"
+echo -e "${BLUE}🔍 Etapa 6: Verificando saúde dos containers${NC}"
 
 # Check Prometheus
 if curl -s http://localhost:9090/-/healthy > /dev/null; then
@@ -130,7 +182,7 @@ fi
 
 # Verificar se Prometheus está coletando métricas da API
 echo ""
-echo -e "${BLUE}🎯 Etapa 6: Verificando coleta de métricas${NC}"
+echo -e "${BLUE}🎯 Etapa 7: Verificando coleta de métricas${NC}"
 sleep 5  # Aguardar primeiro scrape
 
 TARGETS=$(curl -s http://localhost:9090/api/v1/targets | grep -o '"health":"up"' | wc -l)
