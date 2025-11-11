@@ -123,41 +123,57 @@ model_recall = Gauge(
 # FUNÇÕES AUXILIARES
 # ============================================================================
 
-def update_churn_distribution_metrics(predictions_df):
+def update_churn_distribution_metrics(predictions_data):
     """
     Atualiza métricas de distribuição de churn
     
     Args:
-        predictions_df: DataFrame com as predições (colunas: preds, Classificação)
+        predictions_data: Array numpy ou DataFrame com as predições
     """
-    if predictions_df is None or predictions_df.empty:
+    import numpy as np
+    import pandas as pd
+    
+    if predictions_data is None:
+        return
+    
+    # Converter para array se for DataFrame
+    if isinstance(predictions_data, pd.DataFrame):
+        if predictions_data.empty:
+            return
+        preds_array = predictions_data['preds'].values if 'preds' in predictions_data.columns else predictions_data.values
+    elif isinstance(predictions_data, (list, np.ndarray)):
+        preds_array = np.array(predictions_data)
+    else:
+        return
+    
+    if len(preds_array) == 0:
         return
     
     # Score médio
-    avg_score = predictions_df['preds'].mean()
+    avg_score = float(np.mean(preds_array))
     churn_prediction_score_avg.set(avg_score)
     
     # Clientes em alto risco (>0.7)
-    high_risk_count = (predictions_df['preds'] > 0.7).sum()
+    high_risk_count = int(np.sum(preds_array > 0.7))
     churn_predictions_high_risk.set(high_risk_count)
     
     # Distribuição por nível
     risk_levels = BUSINESS_CONFIG['risk_levels']
     
-    baixo_count = ((predictions_df['preds'] >= risk_levels['baixo'][0]) & 
-                   (predictions_df['preds'] < risk_levels['baixo'][1])).sum()
-    medio_count = ((predictions_df['preds'] >= risk_levels['medio'][0]) & 
-                   (predictions_df['preds'] < risk_levels['medio'][1])).sum()
-    alto_count = ((predictions_df['preds'] >= risk_levels['alto'][0]) & 
-                  (predictions_df['preds'] <= risk_levels['alto'][1])).sum()
+    baixo_count = int(np.sum((preds_array >= risk_levels['baixo'][0]) & 
+                             (preds_array < risk_levels['baixo'][1])))
+    medio_count = int(np.sum((preds_array >= risk_levels['medio'][0]) & 
+                             (preds_array < risk_levels['medio'][1])))
+    alto_count = int(np.sum((preds_array >= risk_levels['alto'][0]) & 
+                            (preds_array <= risk_levels['alto'][1])))
     
     churn_predictions_by_level.labels(level='baixo').set(baixo_count)
     churn_predictions_by_level.labels(level='medio').set(medio_count)
     churn_predictions_by_level.labels(level='alto').set(alto_count)
     
     # Atualizar histograma
-    for score in predictions_df['preds']:
-        churn_prediction_score_distribution.observe(score)
+    for score in preds_array:
+        churn_prediction_score_distribution.observe(float(score))
 
 
 def update_model_metrics(metrics_dict=None, **kwargs):

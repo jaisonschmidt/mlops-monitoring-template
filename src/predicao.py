@@ -46,7 +46,7 @@ preds = pipeline.predict_proba(X)[:,1]
 logger.success(f"Predições realizadas para {len(preds)} clientes")
 
 # Atualizar contador de predições
-MODEL_PREDICTIONS_TOTAL.inc(len(preds))
+MODEL_PREDICTIONS_TOTAL.labels(endpoint='batch').inc(len(preds))
 logger.debug(f"Contador de predições incrementado: +{len(preds)}")
 
 # preds para DataFrame
