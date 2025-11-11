@@ -1,0 +1,355 @@
+{
+  "dashboard": {
+    "title": "Business Intelligence - Churn",
+    "tags": ["business", "churn", "kpi"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-3h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "⚠️ Clientes em Alto Risco",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "churn_predictions_high_risk",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 500, "color": "yellow"},
+                {"value": 800, "color": "orange"},
+                {"value": 1000, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "textMode": "value_and_name"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Score Médio de Churn",
+        "type": "gauge",
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "churn_prediction_score_avg",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 1,
+            "decimals": 3,
+            "unit": "percentunit",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.4, "color": "yellow"},
+                {"value": 0.6, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        }
+      },
+      {
+        "id": 3,
+        "title": "Distribuição de Risco",
+        "type": "piechart",
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "churn_predictions_by_level{level=\"baixo\"}",
+            "legendFormat": "Baixo Risco",
+            "refId": "A"
+          },
+          {
+            "expr": "churn_predictions_by_level{level=\"medio\"}",
+            "legendFormat": "Médio Risco",
+            "refId": "B"
+          },
+          {
+            "expr": "churn_predictions_by_level{level=\"alto\"}",
+            "legendFormat": "Alto Risco",
+            "refId": "C"
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "right",
+            "values": ["value", "percent"]
+          },
+          "pieType": "pie",
+          "displayLabels": ["name", "percent"]
+        },
+        "fieldConfig": {
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Baixo Risco"},
+              "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "Médio Risco"},
+              "properties": [{"id": "color", "value": {"fixedColor": "yellow", "mode": "fixed"}}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "Alto Risco"},
+              "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+            }
+          ]
+        }
+      },
+      {
+        "id": 4,
+        "title": "Evolução do Risco ao Longo do Tempo",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+        "targets": [
+          {
+            "expr": "churn_predictions_by_level{level=\"baixo\"}",
+            "legendFormat": "Baixo Risco",
+            "refId": "A"
+          },
+          {
+            "expr": "churn_predictions_by_level{level=\"medio\"}",
+            "legendFormat": "Médio Risco",
+            "refId": "B"
+          },
+          {
+            "expr": "churn_predictions_by_level{level=\"alto\"}",
+            "legendFormat": "Alto Risco",
+            "refId": "C"
+          }
+        ],
+        "stack": true,
+        "yaxes": [
+          {"format": "short", "label": "Número de Clientes"},
+          {"format": "short"}
+        ],
+        "seriesOverrides": [
+          {"alias": "Baixo Risco", "color": "#73BF69"},
+          {"alias": "Médio Risco", "color": "#FADE2A"},
+          {"alias": "Alto Risco", "color": "#F2495C"}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Score Médio - Tendência",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+        "targets": [
+          {
+            "expr": "churn_prediction_score_avg",
+            "legendFormat": "Score Médio",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percentunit", "label": "Score", "min": 0, "max": 1},
+          {"format": "short"}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [0.6], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "Score Médio Alto",
+          "noDataState": "no_data",
+          "notifications": []
+        },
+        "thresholds": [
+          {
+            "value": 0.6,
+            "colorMode": "critical",
+            "op": "gt",
+            "fill": true,
+            "line": true
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "% de Clientes por Nível",
+        "type": "bargauge",
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 14},
+        "targets": [
+          {
+            "expr": "(churn_predictions_by_level{level=\"baixo\"} / sum(churn_predictions_by_level)) * 100",
+            "legendFormat": "Baixo Risco",
+            "refId": "A"
+          },
+          {
+            "expr": "(churn_predictions_by_level{level=\"medio\"} / sum(churn_predictions_by_level)) * 100",
+            "legendFormat": "Médio Risco",
+            "refId": "B"
+          },
+          {
+            "expr": "(churn_predictions_by_level{level=\"alto\"} / sum(churn_predictions_by_level)) * 100",
+            "legendFormat": "Alto Risco",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 30, "color": "yellow"},
+                {"value": 50, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient",
+          "showUnfilled": true
+        }
+      },
+      {
+        "id": 7,
+        "title": "Total de Clientes Analisados",
+        "type": "stat",
+        "gridPos": {"h": 3, "w": 8, "x": 8, "y": 14},
+        "targets": [
+          {
+            "expr": "sum(churn_predictions_by_level)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "blue"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "textMode": "value_and_name"
+        }
+      },
+      {
+        "id": 8,
+        "title": "Taxa de Consultas de Churn",
+        "type": "graph",
+        "gridPos": {"h": 3, "w": 8, "x": 16, "y": 14},
+        "targets": [
+          {
+            "expr": "rate(model_predictions_total{endpoint=~\".*churn.*\"}[5m])",
+            "legendFormat": "Consultas/s",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Taxa"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Variação do Score Médio (última hora)",
+        "type": "stat",
+        "gridPos": {"h": 3, "w": 8, "x": 8, "y": 17},
+        "targets": [
+          {
+            "expr": "((churn_prediction_score_avg - churn_prediction_score_avg offset 1h) / churn_prediction_score_avg offset 1h) * 100",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": -100, "color": "green"},
+                {"value": 0, "color": "yellow"},
+                {"value": 10, "color": "orange"},
+                {"value": 20, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area"
+        }
+      },
+      {
+        "id": 10,
+        "title": "Incremento de Alto Risco (última hora)",
+        "type": "stat",
+        "gridPos": {"h": 3, "w": 8, "x": 16, "y": 17},
+        "targets": [
+          {
+            "expr": "churn_predictions_high_risk - churn_predictions_high_risk offset 1h",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": -1000, "color": "green"},
+                {"value": 0, "color": "yellow"},
+                {"value": 100, "color": "orange"},
+                {"value": 200, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background"
+        }
+      }
+    ]
+  }
+}

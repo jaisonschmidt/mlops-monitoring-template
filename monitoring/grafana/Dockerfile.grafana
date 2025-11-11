@@ -1,0 +1,33 @@
+FROM grafana/grafana:10.2.0
+
+# Copiar configurações
+COPY grafana.ini /etc/grafana/grafana.ini
+
+# Copiar provisioning (datasources e dashboards)
+COPY provisioning/ /etc/grafana/provisioning/
+
+# Definir usuário
+USER root
+
+# Criar diretórios necessários
+RUN mkdir -p /var/lib/grafana && \
+    mkdir -p /var/log/grafana && \
+    chown -R grafana:grafana /var/lib/grafana && \
+    chown -R grafana:grafana /var/log/grafana && \
+    chown -R grafana:grafana /etc/grafana
+
+# Voltar para usuário grafana
+USER grafana
+
+# Expor porta
+EXPOSE 3000
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1
+
+# Variáveis de ambiente padrão
+ENV GF_PATHS_DATA=/var/lib/grafana \
+    GF_PATHS_LOGS=/var/log/grafana \
+    GF_PATHS_PLUGINS=/var/lib/grafana/plugins \
+    GF_PATHS_PROVISIONING=/etc/grafana/provisioning

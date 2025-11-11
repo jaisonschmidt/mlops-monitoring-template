@@ -1,0 +1,377 @@
+{
+  "dashboard": {
+    "title": "System Overview",
+    "tags": ["overview", "system", "general"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🟢 Status Geral do Sistema",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+        "collapsed": false
+      },
+      {
+        "id": 2,
+        "title": "API Status",
+        "type": "stat",
+        "gridPos": {"h": 3, "w": 4, "x": 0, "y": 1},
+        "targets": [
+          {
+            "expr": "up{job=\"api-churn\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "0", "text": "❌ DOWN"},
+              {"type": "value", "value": "1", "text": "✅ UP"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "textMode": "value"
+        }
+      },
+      {
+        "id": 3,
+        "title": "F2-Score",
+        "type": "stat",
+        "gridPos": {"h": 3, "w": 4, "x": 4, "y": 1},
+        "targets": [
+          {
+            "expr": "model_f2_score",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "decimals": 3,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 0.7, "color": "yellow"},
+                {"value": 0.8, "color": "green"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background"
+        }
+      },
+      {
+        "id": 4,
+        "title": "Taxa de Erro",
+        "type": "stat",
+        "gridPos": {"h": 3, "w": 4, "x": 8, "y": 1},
+        "targets": [
+          {
+            "expr": "(sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))) * 100",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 2, "color": "yellow"},
+                {"value": 5, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background"
+        }
+      },
+      {
+        "id": 5,
+        "title": "Uptime (24h)",
+        "type": "stat",
+        "gridPos": {"h": 3, "w": 4, "x": 12, "y": 1},
+        "targets": [
+          {
+            "expr": "avg_over_time(up{job=\"api-churn\"}[24h]) * 100",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 95, "color": "yellow"},
+                {"value": 99, "color": "green"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background"
+        }
+      },
+      {
+        "id": 6,
+        "title": "Clientes Alto Risco",
+        "type": "stat",
+        "gridPos": {"h": 3, "w": 4, "x": 16, "y": 1},
+        "targets": [
+          {
+            "expr": "churn_predictions_high_risk",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 500, "color": "yellow"},
+                {"value": 1000, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background"
+        }
+      },
+      {
+        "id": 7,
+        "title": "Predições Totais",
+        "type": "stat",
+        "gridPos": {"h": 3, "w": 4, "x": 20, "y": 1},
+        "targets": [
+          {
+            "expr": "sum(model_predictions_total)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "fixed", "fixedColor": "blue"}
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "📊 Atividade do Sistema",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 4},
+        "collapsed": false
+      },
+      {
+        "id": 9,
+        "title": "Requisições e Predições",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[1m])",
+            "legendFormat": "Requisições HTTP/s",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(model_predictions_total[1m])",
+            "legendFormat": "Predições/s",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Taxa"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Latência e Taxa de Erro",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "Latência P95 (s)",
+            "refId": "A",
+            "yaxis": 1
+          },
+          {
+            "expr": "(sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))) * 100",
+            "legendFormat": "Taxa de Erro (%)",
+            "refId": "B",
+            "yaxis": 2
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Latência"},
+          {"format": "percent", "label": "Erro %"}
+        ]
+      },
+      {
+        "id": 11,
+        "title": "🎯 Métricas de Negócio",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 13},
+        "collapsed": false
+      },
+      {
+        "id": 12,
+        "title": "Distribuição de Risco Atual",
+        "type": "piechart",
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 14},
+        "targets": [
+          {
+            "expr": "churn_predictions_by_level{level=\"baixo\"}",
+            "legendFormat": "Baixo",
+            "refId": "A"
+          },
+          {
+            "expr": "churn_predictions_by_level{level=\"medio\"}",
+            "legendFormat": "Médio",
+            "refId": "B"
+          },
+          {
+            "expr": "churn_predictions_by_level{level=\"alto\"}",
+            "legendFormat": "Alto",
+            "refId": "C"
+          }
+        ],
+        "options": {
+          "legend": {"displayMode": "list", "placement": "bottom"},
+          "pieType": "donut",
+          "displayLabels": ["percent"]
+        }
+      },
+      {
+        "id": 13,
+        "title": "Evolução do Score Médio",
+        "type": "graph",
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 14},
+        "targets": [
+          {
+            "expr": "churn_prediction_score_avg",
+            "legendFormat": "Score Médio",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percentunit", "label": "Score", "min": 0, "max": 1},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 14,
+        "title": "Métricas do Modelo",
+        "type": "graph",
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 14},
+        "targets": [
+          {
+            "expr": "model_f2_score",
+            "legendFormat": "F2-Score",
+            "refId": "A"
+          },
+          {
+            "expr": "model_auc_score",
+            "legendFormat": "AUC",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "percentunit", "label": "Score", "min": 0, "max": 1},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 15,
+        "title": "📋 Resumo de Métricas",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 20},
+        "collapsed": false
+      },
+      {
+        "id": 16,
+        "title": "Principais KPIs",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 21},
+        "targets": [
+          {
+            "expr": "model_f2_score",
+            "format": "table",
+            "instant": true,
+            "refId": "A",
+            "legendFormat": "F2-Score"
+          },
+          {
+            "expr": "model_auc_score",
+            "format": "table",
+            "instant": true,
+            "refId": "B",
+            "legendFormat": "AUC"
+          },
+          {
+            "expr": "churn_prediction_score_avg",
+            "format": "table",
+            "instant": true,
+            "refId": "C",
+            "legendFormat": "Score Médio Churn"
+          },
+          {
+            "expr": "churn_predictions_high_risk",
+            "format": "table",
+            "instant": true,
+            "refId": "D",
+            "legendFormat": "Clientes Alto Risco"
+          },
+          {
+            "expr": "sum(model_predictions_total)",
+            "format": "table",
+            "instant": true,
+            "refId": "E",
+            "legendFormat": "Total Predições"
+          },
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "format": "table",
+            "instant": true,
+            "refId": "F",
+            "legendFormat": "Taxa Requests"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "merge",
+            "options": {}
+          }
+        ]
+      }
+    ]
+  }
+}
