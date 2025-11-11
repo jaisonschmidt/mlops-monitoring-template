@@ -160,34 +160,41 @@ def update_churn_distribution_metrics(predictions_df):
         churn_prediction_score_distribution.observe(score)
 
 
-def update_model_metrics(metrics_dict):
+def update_model_metrics(metrics_dict=None, **kwargs):
     """
     Atualiza métricas do modelo
     
     Args:
         metrics_dict: Dicionário com métricas (f2_score, auc, precisão, recall, etc)
+        **kwargs: Ou passar métricas como argumentos nomeados
     """
-    if 'f2_score' in metrics_dict:
-        model_f2_score.set(metrics_dict['f2_score'])
+    # Se passou dicionário, usa ele, senão usa kwargs
+    metrics = metrics_dict if metrics_dict is not None else kwargs
     
-    if 'auc' in metrics_dict:
-        model_auc_score.set(metrics_dict['auc'])
+    if 'f2_score' in metrics:
+        model_f2_score.set(metrics['f2_score'])
     
-    if 'precisão' in metrics_dict:
-        model_precision.set(metrics_dict['precisão'])
+    if 'auc' in metrics or 'auc_score' in metrics:
+        model_auc_score.set(metrics.get('auc', metrics.get('auc_score')))
     
-    if 'recall' in metrics_dict:
-        model_recall.set(metrics_dict['recall'])
+    if 'precisão' in metrics or 'precision' in metrics:
+        model_precision.set(metrics.get('precisão', metrics.get('precision')))
+    
+    if 'recall' in metrics:
+        model_recall.set(metrics['recall'])
 
 
-def set_model_version(version_info_dict):
+def set_model_version(version_info):
     """
     Define informações da versão do modelo
     
     Args:
-        version_info_dict: Dicionário com informações (version, date, algorithm, etc)
+        version_info: String com versão ou dicionário com informações (version, date, algorithm, etc)
     """
-    model_version_info.info(version_info_dict)
+    if isinstance(version_info, str):
+        model_version_info.info({'version': version_info})
+    else:
+        model_version_info.info(version_info)
 
 
 # ============================================================================
@@ -254,4 +261,23 @@ __all__ = [
     'update_model_metrics',
     'set_model_version',
     'track_api_request',
+    
+    # Aliases em maiúsculas para compatibilidade
+    'MODEL_PREDICTIONS_TOTAL',
+    'MODEL_TRAINING_DURATION',
+    'MODEL_TRAINING_SAMPLES',
+    'MODEL_RETRAINING_TOTAL',
+    'CHURN_SCORE_AVERAGE',
 ]
+
+# ============================================================================
+# ALIASES EM MAIÚSCULAS PARA COMPATIBILIDADE
+# ============================================================================
+MODEL_PREDICTIONS_TOTAL = model_predictions_total
+MODEL_TRAINING_DURATION = model_training_duration_seconds
+MODEL_TRAINING_SAMPLES = model_training_samples
+MODEL_RETRAINING_TOTAL = Counter(
+    'model_retraining_total',
+    'Número total de retreinamentos realizados'
+)
+CHURN_SCORE_AVERAGE = churn_prediction_score_avg
