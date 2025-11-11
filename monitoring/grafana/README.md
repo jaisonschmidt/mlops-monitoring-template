@@ -1,231 +1,254 @@
-# Grafana - Visualização de Métricas MLOps
+# 📊 Grafana - Visualização de Métricas
 
-Este diretório contém a configuração completa do Grafana para visualização das métricas do sistema MLOps de predição de churn.
+## 🎯 Objetivo
 
-## 📊 Dashboards Disponíveis
+Grafana para visualizar métricas do Prometheus e criar dashboards interativos para monitoramento do sistema MLOps.
 
-### 1. **System Overview** (Visão Geral)
-- **Público-alvo**: Gerentes, visão executiva
-- **Refresh**: 10s
-- **Conteúdo**:
-  - Status geral do sistema
-  - KPIs principais (F2-Score, Taxa de Erro, Uptime)
-  - Atividade de requisições e predições
-  - Distribuição de risco de churn
-  - Tabela resumo de métricas
+## 🏗️ Arquitetura
 
-### 2. **API Health & Performance**
-- **Público-alvo**: DevOps, SRE
-- **Refresh**: 10s
-- **Conteúdo**:
-  - Status da API (UP/DOWN)
-  - Taxa de requisições/segundo
-  - Latência (P50, P95, P99)
-  - Taxa de erro
-  - Requisições ativas
-  - Erros por status code
-
-### 3. **ML Model Metrics**
-- **Público-alvo**: Data Scientists, ML Engineers
-- **Refresh**: 30s
-- **Conteúdo**:
-  - F2-Score (gauge)
-  - AUC-ROC (gauge)
-  - Precisão e Recall
-  - Tempo de treinamento
-  - Amostras de treino
-  - Evolução das métricas
-  - Taxa de predições
-
-### 4. **Business Intelligence - Churn**
-- **Público-alvo**: Product Managers, Business Analysts
-- **Refresh**: 30s
-- **Conteúdo**:
-  - Clientes em alto risco (alerta)
-  - Score médio de churn
-  - Distribuição de risco (pie chart)
-  - Evolução temporal por nível
-  - Variações e tendências
-  - Taxa de consultas
-
-## 🚀 Como Usar
-
-### Build da Imagem
-
-```bash
-cd monitoring/grafana
-docker build -f Dockerfile.grafana -t grafana-mlops:latest .
 ```
-
-### Executar Container
-
-```bash
-docker run -d \
-  --name grafana-mlops \
-  -p 3000:3000 \
-  -v grafana_data:/var/lib/grafana \
-  grafana-mlops:latest
+┌─────────────┐    métricas    ┌────────────┐    consulta    ┌─────────────┐
+│  API Churn  │──────────────>│ Prometheus │<──────────────│   Grafana   │
+│  :8000      │    /metrics    │   :9090    │   PromQL      │   :3000     │
+└─────────────┘                └────────────┘                └─────────────┘
 ```
-
-### Acessar Grafana
-
-1. Abrir navegador em: `http://localhost:3000`
-2. **Login padrão**:
-   - Usuário: `admin`
-   - Senha: `admin`
-3. Trocar senha no primeiro acesso (recomendado)
 
 ## 📁 Estrutura de Arquivos
 
 ```
-grafana/
-├── Dockerfile.grafana              # Imagem Docker
+monitoring/grafana/
+├── Dockerfile.grafana              # Container Grafana
 ├── grafana.ini                     # Configuração principal
-├── provisioning/
+├── README.md                       # Esta documentação
+├── provisioning/                   # Auto-provisionamento
 │   ├── datasources/
-│   │   └── prometheus.yml          # Auto-config Prometheus
+│   │   └── prometheus.yml         # Datasource Prometheus
 │   └── dashboards/
-│       ├── dashboards.yml          # Provider de dashboards
-│       ├── api-health.json         # Dashboard API
-│       ├── ml-metrics.json         # Dashboard ML
-│       ├── business-churn.json     # Dashboard Negócio
-│       └── overview.json           # Dashboard Overview
-└── screenshots/                    # Screenshots dos dashboards
+│       ├── dashboards.yml         # Provider de dashboards
+│       ├── api-health.json        # Dashboard 1: API Health
+│       ├── ml-metrics.json        # Dashboard 2: ML Metrics
+│       ├── business-churn.json    # Dashboard 3: Business
+│       └── overview.json          # Dashboard 4: Overview
+└── screenshots/                    # Capturas de tela
+    └── README.md
 ```
 
-## ⚙️ Configuração
+## 🚀 Como Usar
+
+### 1️⃣ Build da Imagem
+
+```bash
+cd monitoring/grafana
+docker build -t grafana-mlops -f Dockerfile.grafana .
+```
+
+### 2️⃣ Executar Container
+
+```bash
+docker run -d \
+  --name grafana \
+  -p 3000:3000 \
+  --network host \
+  grafana-mlops
+```
+
+### 3️⃣ Acessar Interface
+
+Abra o navegador em: **http://localhost:3000**
+
+**Credenciais padrão:**
+- Usuário: `admin`
+- Senha: `admin`
+
+> ⚠️ **Atenção**: Na primeira vez, será solicitado para alterar a senha.
+
+## 📊 Dashboards Disponíveis
+
+### 1. API Health & Performance
+- **UID**: `api-health`
+- **Tags**: `api`, `performance`, `infrastructure`
+- **Painéis**:
+  - 🟢 Status da API (UP/DOWN)
+  - 📈 Taxa de requisições por segundo
+  - ⏱️ Latência P50, P95, P99
+  - ❌ Taxa de erros (%)
+  - 🔄 Requisições ativas
+  - ⏰ Uptime da API
+  - 📊 Requisições por método HTTP
+  - 🌐 Requisições por endpoint
+  - 📉 Histórico de latência
+  - 🔴 Erros ao longo do tempo
+
+### 2. ML Model Metrics
+- **UID**: `ml-metrics`
+- **Tags**: `ml`, `model`, `metrics`
+- **Painéis**:
+  - 🎯 F2-Score (gauge)
+  - 📊 AUC-ROC (gauge)
+  - ⏱️ Tempo de treinamento
+  - 📝 Total de amostras treinadas
+  - 📈 Evolução de métricas (F2, AUC)
+  - 🔢 Total de predições
+  - 📊 Taxa de predições/s
+  - 🏷️ Versão do modelo
+  - 📋 Tabela de métricas
+
+### 3. Business Intelligence - Churn
+- **UID**: `business-churn`
+- **Tags**: `business`, `churn`, `kpi`
+- **Painéis**:
+  - 🚨 Clientes em alto risco
+  - 🥧 Distribuição de risco (Pie Chart)
+  - 📊 Score médio de churn
+  - 📈 Evolução de predições (Stacked Area)
+  - 📉 Tendência de alto risco
+  - 📊 Percentual alto risco
+  - 📊 Percentual baixo risco
+  - 👥 Total de clientes
+  - 📊 Taxa de queries
+
+### 4. System Overview (Executivo)
+- **UID**: `overview`
+- **Tags**: `overview`, `executive`, `summary`
+- **Painéis**:
+  - 🟢 Status da API
+  - 🎯 F2-Score
+  - 📊 AUC
+  - ❌ Taxa de erro
+  - ⏰ Uptime 24h
+  - 🚨 Clientes alto risco
+  - 📊 Total de predições
+  - 📈 Atividade geral (timeseries)
+  - 🥧 Distribuição de risco
+  - 📋 Tabela de KPIs principais
+
+## 🔧 Configuração
 
 ### Datasource Prometheus
 
-O datasource é configurado automaticamente via provisioning:
-- **Nome**: Prometheus
-- **URL**: `http://host.docker.internal:9090`
-- **Acesso**: Proxy
-- **Intervalo**: 15s
+O datasource é provisionado automaticamente via arquivo `provisioning/datasources/prometheus.yml`:
 
-### Dashboards
-
-Os dashboards são provisionados automaticamente na pasta **"MLOps Monitoring"**.
-
-## 🔔 Alertas Configurados
-
-### Dashboard: API Health & Performance
-- **Latência P95 Alta**: P95 > 2s por 5 minutos
-
-### Dashboard: Business - Churn
-- **Score Médio Alto**: Score > 0.6
-
-## 🎨 Personalização
-
-### Editar Dashboards
-
-1. Acesse o dashboard no Grafana
-2. Clique em "Dashboard settings" (⚙️)
-3. Faça suas modificações
-4. Salve
-
-### Exportar Dashboard
-
-1. Dashboard settings → JSON Model
-2. Copiar JSON
-3. Salvar em `provisioning/dashboards/<nome>.json`
-
-### Importar Dashboard
-
-1. Criar arquivo JSON em `provisioning/dashboards/`
-2. Adicionar ao `dashboards.yml` se necessário
-3. Reiniciar container
-
-## 📊 Variáveis de Dashboard
-
-Os dashboards suportam variáveis para filtragem:
-- **Intervalo de tempo**: Ajustável no canto superior direito
-- **Refresh**: Configurável por dashboard
-
-## 🔧 Troubleshooting
-
-### Grafana não inicia
-
-```bash
-# Ver logs
-docker logs grafana-mlops
-
-# Verificar permissões
-docker exec -it grafana-mlops ls -la /var/lib/grafana
+```yaml
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://host.docker.internal:9090
+    isDefault: true
 ```
 
-### Datasource não conecta
+### Dashboards Auto-Provisionamento
 
+Os dashboards JSON são carregados automaticamente do diretório `/etc/grafana/provisioning/dashboards/` dentro do container.
+
+## 📝 Queries PromQL Importantes
+
+### API
+```promql
+# Status da API
+up{job="api-churn"}
+
+# Taxa de requisições
+rate(http_requests_total[5m])
+
+# Latência P95
+histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+```
+
+### ML Metrics
+```promql
+# F2-Score atual
+model_f2_score
+
+# Predições por segundo
+rate(model_predictions_total[5m])
+```
+
+### Business
+```promql
+# Clientes em alto risco
+churn_predictions_high_risk
+
+# Distribuição por nível
+churn_predictions_by_level{level="alto"}
+```
+
+## 🎨 Customização
+
+### Adicionar Novo Dashboard
+
+1. Crie o dashboard na interface do Grafana
+2. Exporte como JSON: **Share → Export → Save to file**
+3. Copie o arquivo para `provisioning/dashboards/`
+4. Rebuild o container
+
+### Modificar Dashboard Existente
+
+1. Edite o arquivo JSON correspondente
+2. Rebuild o container
+3. Ou: Importe manualmente via **Dashboards → Import**
+
+## 🔍 Troubleshooting
+
+### Datasource não conecta ao Prometheus
+
+**Problema**: Erro "Bad Gateway" ou timeout
+
+**Solução**:
 ```bash
-# Verificar se Prometheus está rodando
+# Verifique se Prometheus está rodando
 curl http://localhost:9090/-/healthy
 
-# Testar conectividade do container
-docker exec -it grafana-mlops wget -O- http://host.docker.internal:9090/api/v1/status/config
+# Use --network host no docker run
+docker run -d --name grafana -p 3000:3000 --network host grafana-mlops
 ```
 
 ### Dashboards não aparecem
 
+**Problema**: Dashboards não carregam automaticamente
+
+**Solução**:
 ```bash
-# Verificar provisioning
-docker exec -it grafana-mlops ls -la /etc/grafana/provisioning/dashboards/
+# Verifique os logs do container
+docker logs grafana
 
-# Recarregar provisioning
-# Reiniciar o container
-docker restart grafana-mlops
+# Verifique permissões dos arquivos JSON
+ls -la provisioning/dashboards/
+
+# Force reload: Restart do container
+docker restart grafana
 ```
 
-### Sem dados nos painéis
+### Gráficos sem dados
 
-1. Verificar se a API está rodando e gerando métricas
-2. Verificar se Prometheus está coletando: `http://localhost:9090/targets`
-3. Testar query direto no Prometheus
-4. Verificar intervalo de tempo no dashboard
+**Problema**: Painéis mostram "No data"
 
-## 📖 Recursos Adicionais
+**Solução**:
+1. Verifique se a API está expondo `/metrics`
+2. Verifique se Prometheus está coletando:
+   - Acesse http://localhost:9090/targets
+   - Status deve ser "UP"
+3. Execute algumas predições para gerar métricas
 
-- **Grafana Docs**: https://grafana.com/docs/grafana/latest/
-- **Dashboard Best Practices**: https://grafana.com/docs/grafana/latest/best-practices/
-- **PromQL Queries**: Ver `monitoring/queries_exemplos.md`
+## 📚 Recursos
 
-## 🔐 Segurança
+- [Documentação Oficial Grafana](https://grafana.com/docs/)
+- [PromQL Cheat Sheet](https://promlabs.com/promql-cheat-sheet/)
+- [Grafana Dashboard Best Practices](https://grafana.com/docs/grafana/latest/best-practices/)
 
-### Produção
+## 🎓 Para Alunos
 
-Para ambiente de produção, alterar:
+### Exercícios Práticos
 
-```ini
-[security]
-admin_user = seu_usuario
-admin_password = senha_forte
+1. **Criar um novo painel**: Adicione um painel mostrando a média móvel de 1h de predições
+2. **Configurar alerta**: Crie um alerta quando F2-Score < 0.7
+3. **Dashboard personalizado**: Crie um dashboard com métricas específicas do seu modelo
+4. **Variáveis de template**: Adicione filtros por período de tempo
 
-[users]
-allow_sign_up = false
-```
+### Conceitos-Chave
 
-### Variáveis de Ambiente
-
-```bash
-docker run -d \
-  --name grafana-mlops \
-  -p 3000:3000 \
-  -e "GF_SECURITY_ADMIN_USER=admin" \
-  -e "GF_SECURITY_ADMIN_PASSWORD=sua_senha" \
-  grafana-mlops:latest
-```
-
-## 💡 Dicas
-
-1. **Favoritar dashboards importantes**: ⭐ no menu
-2. **Criar playlists**: Para exibir múltiplos dashboards
-3. **Usar anotações**: Marcar eventos importantes (deploys, incidentes)
-4. **Compartilhar**: Link direto ou snapshot
-5. **Alertas**: Configurar notification channels (email, Slack)
-
-## 📸 Screenshots
-
-Screenshots dos dashboards estão disponíveis em `screenshots/`:
-- `overview.png`
-- `api-health.png`
-- `ml-metrics.png`
-- `business-churn.png`
+- **Datasource**: Fonte de dados (Prometheus)
+- **Panel**: Painel individual de visualização
+- **Query**: Consulta PromQL para buscar dados
+- **Dashboard**: Conjunto de painéis organizados
+- **Provisioning**: Configuração automatizada via código
