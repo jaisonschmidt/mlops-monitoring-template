@@ -7,7 +7,7 @@ datasources:
     # URL do Prometheus (ajustar conforme necessário)
     # Para Docker: http://prometheus-mlops:9090
     # Para host: http://host.docker.internal:9090
-    url: http://host.docker.internal:9090
+    url: http://prometheus:9090
     isDefault: true
     editable: false
     jsonData:

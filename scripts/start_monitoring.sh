@@ -14,6 +14,7 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+NETWORK_NAME="mlops-monitoring"
 
 # Função para verificar se um container está rodando
 check_container() {
@@ -95,6 +96,13 @@ cleanup_container "grafana"
 cleanup_container "api-churn"
 echo -e "${GREEN}✅ Limpeza concluída${NC}"
 
+# Criar rede Docker dedicada (se não existir)
+if ! docker network inspect "$NETWORK_NAME" &> /dev/null; then
+    echo -e "${YELLOW}🌐 Criando rede Docker $NETWORK_NAME...${NC}"
+    docker network create "$NETWORK_NAME" &> /dev/null
+fi
+echo -e "${GREEN}✅ Rede Docker pronta: $NETWORK_NAME${NC}"
+
 # Build e start Prometheus
 echo ""
 echo -e "${BLUE}📦 Etapa 3: Iniciando Prometheus${NC}"
@@ -107,6 +115,7 @@ fi
 docker build -t prometheus-mlops -f Dockerfile.prometheus . --quiet
 docker run -d \
     --name prometheus \
+    --network "$NETWORK_NAME" \
     -p 9090:9090 \
     prometheus-mlops
 
@@ -124,6 +133,7 @@ fi
 docker build -t grafana-mlops -f Dockerfile.grafana . --quiet
 docker run -d \
     --name grafana \
+    --network "$NETWORK_NAME" \
     -p 3000:3000 \
     grafana-mlops
 
@@ -142,6 +152,7 @@ fi
 docker build -t api-churn -f Dockerfile.api . --quiet
 docker run -d \
     --name api-churn \
+    --network "$NETWORK_NAME" \
     -p 8000:8000 \
     api-churn
 

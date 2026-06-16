@@ -1,11 +1,10 @@
 """
 Script para teste de carga da API de predição de churn
-Simula requisições para gerar métricas no Prometheus
+Simula consultas para gerar métricas no Prometheus
 """
 import requests
 import time
 import random
-import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
@@ -14,94 +13,34 @@ API_URL = "http://localhost:8000"
 NUM_REQUESTS = 100  # Total de requisições
 CONCURRENT_WORKERS = 10  # Requisições paralelas
 DELAY_BETWEEN_BATCHES = 0.5  # Segundos
+ID_CLIENTES = []
 
-# Dados de exemplo para predição
-SAMPLE_CLIENTS = [
-    {
-        "pais": "França",
-        "genero": "Feminino",
-        "idade": 42,
-        "anos_cliente": 8,
-        "saldo_conta": 159660.80,
-        "numero_produtos": 3,
-        "cartao_credito": 1,
-        "membro_ativo": 0,
-        "salario_estimado": 113931.57,
-        "escore_credito": 608
-    },
-    {
-        "pais": "Espanha",
-        "genero": "Feminino",
-        "idade": 41,
-        "anos_cliente": 1,
-        "saldo_conta": 0.0,
-        "numero_produtos": 2,
-        "cartao_credito": 0,
-        "membro_ativo": 1,
-        "salario_estimado": 112542.58,
-        "escore_credito": 502
-    },
-    {
-        "pais": "França",
-        "genero": "Feminino",
-        "idade": 42,
-        "anos_cliente": 8,
-        "saldo_conta": 113755.78,
-        "numero_produtos": 1,
-        "cartao_credito": 1,
-        "membro_ativo": 1,
-        "salario_estimado": 149756.71,
-        "escore_credito": 699
-    },
-    {
-        "pais": "França",
-        "genero": "Masculino",
-        "idade": 39,
-        "anos_cliente": 1,
-        "saldo_conta": 0.0,
-        "numero_produtos": 2,
-        "cartao_credito": 0,
-        "membro_ativo": 0,
-        "salario_estimado": 93826.63,
-        "escore_credito": 850
-    },
-    {
-        "pais": "Espanha",
-        "genero": "Masculino",
-        "idade": 43,
-        "anos_cliente": 2,
-        "saldo_conta": 125510.82,
-        "numero_produtos": 1,
-        "cartao_credito": 1,
-        "membro_ativo": 1,
-        "salario_estimado": 79084.10,
-        "escore_credito": 645
-    }
-]
 
-def gerar_cliente_aleatorio():
-    """Gera dados de cliente com variação aleatória"""
-    base = random.choice(SAMPLE_CLIENTS).copy()
-    
-    # Adicionar variação
-    base["idade"] += random.randint(-5, 5)
-    base["saldo_conta"] *= random.uniform(0.5, 1.5)
-    base["salario_estimado"] *= random.uniform(0.8, 1.2)
-    base["escore_credito"] = max(300, min(850, base["escore_credito"] + random.randint(-50, 50)))
-    
-    return base
-
-def fazer_predicao(client_id):
-    """Faz uma requisição de predição"""
+def obter_ids_clientes():
+    """Busca IDs válidos diretamente da API para teste de carga."""
     try:
-        cliente = gerar_cliente_aleatorio()
+        response = requests.get(
+            f"{API_URL}/churn/todas/predicoes",
+            params={"limite": 1000},
+            timeout=10,
+        )
+        if response.status_code != 200:
+            return []
+
+        payload = response.json()
+        predicoes = payload.get("predicoes", [])
+        return [item.get("id_cliente") for item in predicoes if "id_cliente" in item]
+    except Exception:
+        return []
+
+
+def fazer_consulta(client_id):
+    """Faz uma requisição de consulta de churn por ID."""
+    try:
+        id_cliente = random.choice(ID_CLIENTES)
         
         start_time = time.time()
-        response = requests.post(
-            f"{API_URL}/predict",
-            json=cliente,
-            timeout=10
-        )
+        response = requests.get(f"{API_URL}/churn/{id_cliente}", timeout=10)
         latency = (time.time() - start_time) * 1000  # ms
         
         if response.status_code == 200:
@@ -110,8 +49,9 @@ def fazer_predicao(client_id):
                 "id": client_id,
                 "status": "success",
                 "latency_ms": latency,
-                "prediction": resultado["probabilidade_churn"],
-                "risk": resultado["nivel_risco"]
+                "id_cliente": resultado["id_cliente"],
+                "prediction": resultado["risco_churn"],
+                "message": resultado["mensagem"],
             }
         else:
             return {
@@ -147,6 +87,13 @@ def executar_teste():
         print("❌ API não está disponível!")
         print("   Execute: docker run -d --name api-churn -p 8000:8000 api-churn")
         return
+
+    global ID_CLIENTES
+    ID_CLIENTES = obter_ids_clientes()
+    if not ID_CLIENTES:
+        print("❌ Não foi possível obter IDs de clientes para teste.")
+        print("   Verifique se o endpoint /churn/todas/predicoes está acessível.")
+        return
     
     print("✅ API disponível!")
     
@@ -155,6 +102,7 @@ def executar_teste():
     print(f"   • Total de requisições: {NUM_REQUESTS}")
     print(f"   • Workers paralelos: {CONCURRENT_WORKERS}")
     print(f"   • Delay entre batches: {DELAY_BETWEEN_BATCHES}s")
+    print(f"   • IDs disponíveis para consulta: {len(ID_CLIENTES)}")
     
     # Executar teste
     print(f"\n🏃 Iniciando teste às {datetime.now().strftime('%H:%M:%S')}...\n")
@@ -170,7 +118,7 @@ def executar_teste():
     start_total = time.time()
     
     with ThreadPoolExecutor(max_workers=CONCURRENT_WORKERS) as executor:
-        futures = [executor.submit(fazer_predicao, i) for i in range(NUM_REQUESTS)]
+        futures = [executor.submit(fazer_consulta, i) for i in range(NUM_REQUESTS)]
         
         for future in as_completed(futures):
             resultado = future.result()
@@ -179,7 +127,10 @@ def executar_teste():
                 resultados["success"] += 1
                 resultados["latencies"].append(resultado["latency_ms"])
                 resultados["predictions"].append(resultado["prediction"])
-                print(f"✅ Req {resultado['id']:3d} | {resultado['latency_ms']:6.1f}ms | Churn: {resultado['prediction']:.3f} | {resultado['risk']}")
+                print(
+                    f"✅ Req {resultado['id']:3d} | Cliente {resultado['id_cliente']:5d} | "
+                    f"{resultado['latency_ms']:6.1f}ms | Churn: {resultado['prediction']:.3f}"
+                )
             elif resultado["status"] == "error":
                 resultados["error"] += 1
                 print(f"❌ Req {resultado['id']:3d} | Erro HTTP: {resultado.get('error', 'Unknown')}")
