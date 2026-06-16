@@ -4,6 +4,7 @@
 # libs 
 import numpy as np
 import pandas as pd
+import json
 import sys
 from pathlib import Path
 
@@ -215,6 +216,23 @@ logger.success(f"Modelo salvo em: {model_path}")
 # Atualizar versão do modelo no Prometheus
 set_model_version(model_version)
 logger.info(f"Versão do modelo: {model_version}")
+
+metadata_path = Path("outputs/model_metadata.json")
+metadata_path.parent.mkdir(parents=True, exist_ok=True)
+metadata = {
+    "model_version": model_version,
+    "training_duration_seconds": float(training_duration),
+    "training_samples": int(X_final.shape[0]),
+    "f2_score": float(metricas["f2_score"]),
+    "auc": float(metricas["auc"]),
+    "precision": float(metricas["precisão"]),
+    "recall": float(metricas["recall"]),
+}
+metadata_path.write_text(
+    json.dumps(metadata, ensure_ascii=False, indent=2),
+    encoding="utf-8"
+)
+logger.info(f"Metadados do modelo salvos em: {metadata_path}")
 
 logger.info("="*60)
 logger.success("TREINAMENTO CONCLUÍDO COM SUCESSO!")

@@ -39,6 +39,12 @@ API_BASE_URL="$(get_base_url 8000)"
 PROMETHEUS_BASE_URL="$(get_base_url 9090)"
 GRAFANA_BASE_URL="$(get_base_url 3000)"
 
+# URLs de health/metrics para validação externa (Codespaces) ou local.
+PROMETHEUS_HEALTH_URL="${PROMETHEUS_BASE_URL}/-/healthy"
+GRAFANA_HEALTH_URL="${GRAFANA_BASE_URL}/api/health"
+API_HEALTH_URL="${API_BASE_URL}/health"
+API_METRICS_URL="${API_BASE_URL}/metrics"
+
 # Função para verificar se um container está rodando
 check_container() {
     if docker ps -q -f name=$1 &> /dev/null; then
@@ -54,6 +60,53 @@ cleanup_container() {
         echo -e "${YELLOW}⚠️  Container $1 já existe. Removendo...${NC}"
         docker rm -f $1 &> /dev/null || true
     fi
+}
+
+wait_for_http_ok() {
+    local service_name="$1"
+    local url="$2"
+    local retries="${3:-20}"
+    local delay_seconds="${4:-3}"
+
+    for ((i=1; i<=retries; i++)); do
+        if curl -fsS "$url" > /dev/null 2>&1; then
+            echo -e "${GREEN}✅ ${service_name}: healthy${NC}"
+            return 0
+        fi
+        echo -e "${YELLOW}⏳ ${service_name}: aguardando... tentativa ${i}/${retries}${NC}"
+        sleep "$delay_seconds"
+    done
+
+    echo -e "❌ ${service_name}: não respondeu em ${url}"
+    return 1
+}
+
+check_api_target_up() {
+    local targets_json
+    targets_json="$(curl -fsS "${PROMETHEUS_BASE_URL}/api/v1/targets" 2>/dev/null || true)"
+
+    if [ -z "$targets_json" ]; then
+        echo "0"
+        return 0
+    fi
+
+    echo "$targets_json" | "$PYTHON_CMD" -c '
+import json
+import sys
+
+try:
+    payload = json.load(sys.stdin)
+except Exception:
+    print("0")
+    raise SystemExit(0)
+
+targets = payload.get("data", {}).get("activeTargets", [])
+ok = any(
+    t.get("labels", {}).get("job") == "api-churn" and t.get("health") == "up"
+    for t in targets
+)
+print("1" if ok else "0")
+'
 }
 
 # Diretório raiz do projeto
@@ -198,47 +251,40 @@ echo -e "${GREEN}✅ API iniciada em ${API_BASE_URL}${NC}"
 echo -e "   Documentação: ${BLUE}${API_BASE_URL}/docs${NC}"
 echo "$(log_time) - API pronto"
 
-# Aguardar containers iniciarem
-echo ""
-echo -e "${YELLOW}⏳ Aguardando containers iniciarem (10s)...${NC}"
-sleep 10
-
 # Verificar saúde dos containers
 echo ""
 echo -e "${BLUE}🔍 Etapa 6: Verificando saúde dos containers${NC}"
 echo "$(log_time) - Iniciando health checks..."
 
-# Check Prometheus
-if curl -s http://localhost:9090/-/healthy > /dev/null; then
-    echo -e "${GREEN}✅ Prometheus: healthy${NC}"
-else
-    echo -e "❌ Prometheus: não está respondendo"
+if ! wait_for_http_ok "Prometheus" "$PROMETHEUS_HEALTH_URL" 20 3; then
+    echo -e "${YELLOW}⚠️  Prosseguindo para diagnóstico, mas Prometheus não ficou healthy${NC}"
 fi
 
-# Check Grafana
-if curl -s http://localhost:3000/api/health > /dev/null; then
-    echo -e "${GREEN}✅ Grafana: healthy${NC}"
-else
-    echo -e "${YELLOW}⚠️  Grafana: ainda inicializando...${NC}"
+if ! wait_for_http_ok "Grafana" "$GRAFANA_HEALTH_URL" 20 3; then
+    echo -e "${YELLOW}⚠️  Prosseguindo para diagnóstico, mas Grafana não ficou healthy${NC}"
 fi
 
-# Check API
-if curl -s http://localhost:8000/health > /dev/null; then
-    echo -e "${GREEN}✅ API: healthy${NC}"
-else
-    echo -e "❌ API: não está respondendo"
+if ! wait_for_http_ok "API" "$API_HEALTH_URL" 20 3; then
+    echo -e "${YELLOW}⚠️  Prosseguindo para diagnóstico, mas API não ficou healthy${NC}"
 fi
 
 # Verificar se Prometheus está coletando métricas da API
 echo ""
 echo -e "${BLUE}🎯 Etapa 7: Verificando coleta de métricas${NC}"
+
+if wait_for_http_ok "Endpoint /metrics da API" "$API_METRICS_URL" 10 2; then
+    echo -e "${GREEN}✅ API expondo métricas Prometheus${NC}"
+else
+    echo -e "${YELLOW}⚠️  API ainda não está expondo /metrics${NC}"
+fi
+
 sleep 5  # Aguardar primeiro scrape
 
-TARGETS=$(curl -s http://localhost:9090/api/v1/targets | grep -o '"health":"up"' | wc -l)
-if [ "$TARGETS" -gt 0 ]; then
+API_TARGET_UP="$(check_api_target_up)"
+if [ "$API_TARGET_UP" = "1" ]; then
     echo -e "${GREEN}✅ Prometheus coletando métricas da API${NC}"
 else
-    echo -e "${YELLOW}⚠️  Aguarde alguns segundos para primeiro scrape...${NC}"
+    echo -e "${YELLOW}⚠️  Target api-churn ainda não está UP no Prometheus${NC}"
 fi
 
 # Resumo final

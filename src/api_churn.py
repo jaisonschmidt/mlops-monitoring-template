@@ -11,6 +11,7 @@ from pydantic import BaseModel
 import pandas as pd
 from pathlib import Path
 from typing import Optional
+import json
 import sys
 
 # Adicionar src ao path para imports
@@ -25,6 +26,10 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from utils.metrics import (
     api_predictions_loaded,
     update_churn_distribution_metrics,
+    update_model_metrics,
+    set_model_version,
+    model_training_duration_seconds,
+    model_training_samples,
     model_predictions_total,
     churn_predictions_high_risk,
 )
@@ -54,6 +59,9 @@ logger.info("Instrumentação Prometheus ativada em /metrics")
 
 # Caminho para o arquivo de predições
 PREDICOES_PATH = Path(__file__).parent.parent / "outputs" / "predicoes.csv"
+METRICAS_PATH = Path(__file__).parent.parent / "outputs" / "metricas_desempenho_evasao.csv"
+METADATA_PATH = Path(__file__).parent.parent / "outputs" / "model_metadata.json"
+MODEL_PATH = Path(__file__).parent.parent / "models" / "pipeline_modelo_treinado.joblib"
 
 # Cache para armazenar os dados
 predicoes_df = None
@@ -84,12 +92,84 @@ def carregar_predicoes():
         api_predictions_loaded.set(0)
 
 
+def carregar_metricas_modelo() -> bool:
+    """Carrega métricas de ML persistidas para expor no /metrics da API."""
+    try:
+        if not METRICAS_PATH.exists():
+            logger.warning(f"Arquivo de métricas ML não encontrado: {METRICAS_PATH}")
+            return False
+
+        logger.info(f"Carregando métricas ML de: {METRICAS_PATH}")
+        metricas_df = pd.read_csv(METRICAS_PATH, index_col=0)
+
+        if metricas_df.empty:
+            logger.warning("Arquivo de métricas ML está vazio")
+            return False
+
+        valor_col = "Valores" if "Valores" in metricas_df.columns else metricas_df.columns[0]
+
+        def _get_metric(name: str):
+            if name not in metricas_df.index:
+                return None
+            return float(metricas_df.loc[name, valor_col])
+
+        payload = {}
+        f2_score = _get_metric("f2_score")
+        auc_score = _get_metric("auc")
+        precision = _get_metric("precisão")
+        recall = _get_metric("recall")
+
+        if f2_score is not None:
+            payload["f2_score"] = f2_score
+        if auc_score is not None:
+            payload["auc_score"] = auc_score
+        if precision is not None:
+            payload["precision"] = precision
+        if recall is not None:
+            payload["recall"] = recall
+
+        if payload:
+            update_model_metrics(**payload)
+            logger.success("Métricas de qualidade do modelo carregadas")
+        else:
+            logger.warning("Nenhuma métrica de qualidade do modelo encontrada no arquivo")
+
+        metadata = {}
+        if METADATA_PATH.exists():
+            metadata = json.loads(METADATA_PATH.read_text(encoding="utf-8"))
+
+        training_duration = metadata.get("training_duration_seconds")
+        training_samples = metadata.get("training_samples")
+        model_version = metadata.get("model_version")
+
+        if training_duration is not None:
+            model_training_duration_seconds.set(float(training_duration))
+
+        if training_samples is not None:
+            model_training_samples.set(float(training_samples))
+        elif predicoes_df is not None:
+            model_training_samples.set(float(len(predicoes_df)))
+
+        if model_version:
+            set_model_version(str(model_version))
+        elif MODEL_PATH.exists():
+            # Fallback simples para não deixar a métrica de versão vazia.
+            set_model_version(str(MODEL_PATH.stat().st_mtime_ns))
+
+        return True
+
+    except Exception as e:
+        logger.exception(f"Erro ao carregar métricas ML: {e}")
+        return False
+
+
 # Carregar dados na inicialização
 @app.on_event("startup")
 async def startup_event():
     """Evento executado na inicialização da API"""
     logger.info("Iniciando API - Evento de startup")
     carregar_predicoes()
+    carregar_metricas_modelo()
     logger.info("API pronta para receber requisições")
 
 
@@ -279,6 +359,7 @@ async def recarregar_dados():
     """
     logger.info("Solicitação de recarga de dados")
     carregar_predicoes()
+    metricas_ml_ok = carregar_metricas_modelo()
     
     if predicoes_df is None:
         logger.error("Falha ao recarregar dados")
@@ -292,7 +373,8 @@ async def recarregar_dados():
     
     return {
         'status': 'Dados recarregados com sucesso',
-        'total_registros': total
+        'total_registros': total,
+        'metricas_ml_carregadas': metricas_ml_ok
     }
 
 
