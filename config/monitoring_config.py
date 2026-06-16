@@ -29,14 +29,16 @@ LOG_FILES = {
 
 # Configurações do Prometheus
 PROMETHEUS_CONFIG = {
-    "port": 9090,
+    "host": os.getenv("PROMETHEUS_HOST", "localhost"),
+    "port": int(os.getenv("PROMETHEUS_PORT", "9090")),
     "scrape_interval": "15s",
     "evaluation_interval": "15s",
 }
 
 # Configurações do Grafana
 GRAFANA_CONFIG = {
-    "port": 3000,
+    "host": os.getenv("GRAFANA_HOST", "localhost"),
+    "port": int(os.getenv("GRAFANA_PORT", "3000")),
     "admin_user": os.getenv("GRAFANA_ADMIN_USER", "admin"),
     "admin_password": os.getenv("GRAFANA_ADMIN_PASSWORD", "admin"),
 }

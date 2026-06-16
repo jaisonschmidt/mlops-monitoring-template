@@ -7,9 +7,36 @@ import time
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+import os
+
+# Resolução dinâmica do host da API:
+# Prioridade 1: variável de ambiente API_URL
+# Prioridade 2: auto-detecção via GitHub Codespaces
+# Prioridade 3: localhost (padrão local)
+def _resolve_api_url() -> str:
+    if url := os.environ.get("API_URL"):
+        return url.rstrip("/")
+    codespace_name = os.environ.get("CODESPACE_NAME")
+    if codespace_name:
+        domain = os.environ.get(
+            "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev"
+        )
+        return f"https://{codespace_name}-8000.{domain}"
+    return "http://localhost:8000"
+
+
+def _resolve_service_url(port: int) -> str:
+    codespace_name = os.environ.get("CODESPACE_NAME")
+    if codespace_name:
+        domain = os.environ.get(
+            "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev"
+        )
+        return f"https://{codespace_name}-{port}.{domain}"
+    return f"http://localhost:{port}"
+
 
 # Configuração
-API_URL = "http://localhost:8000"
+API_URL = _resolve_api_url()
 NUM_REQUESTS = 100  # Total de requisições
 CONCURRENT_WORKERS = 10  # Requisições paralelas
 DELAY_BETWEEN_BATCHES = 0.5  # Segundos
@@ -183,8 +210,8 @@ def executar_teste():
     print("\n" + "="*70)
     print("✅ Teste concluído!")
     print(f"🔗 Verifique as métricas em:")
-    print(f"   • Prometheus: http://localhost:9090")
-    print(f"   • Grafana: http://localhost:3000")
+    print(f"   • Prometheus: {_resolve_service_url(9090)}")
+    print(f"   • Grafana: {_resolve_service_url(3000)}")
     print(f"   • Métricas da API: {API_URL}/metrics")
     print("="*70)
 

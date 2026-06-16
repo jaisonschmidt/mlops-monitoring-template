@@ -5,8 +5,14 @@
 
 set -e  # Parar em caso de erro
 
+# Função para timestamp
+log_time() {
+    echo "[$(date +'%H:%M:%S')]"
+}
+
 echo "=========================================="
 echo "🚀 INICIANDO STACK DE MONITORAMENTO MLOPS"
+echo "$(log_time)"
 echo "=========================================="
 
 # Cores para output
@@ -15,6 +21,23 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 NETWORK_NAME="mlops-monitoring"
+
+# Detecção de ambiente: GitHub Codespaces vs local
+# No Codespaces, as portas são expostas via HTTPS em domínios específicos.
+# Exemplo: https://${CODESPACE_NAME}-8000.app.github.dev
+get_base_url() {
+    local port="$1"
+    if [ -n "${CODESPACE_NAME:-}" ]; then
+        local domain="${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}"
+        echo "https://${CODESPACE_NAME}-${port}.${domain}"
+    else
+        echo "http://localhost:${port}"
+    fi
+}
+
+API_BASE_URL="$(get_base_url 8000)"
+PROMETHEUS_BASE_URL="$(get_base_url 9090)"
+GRAFANA_BASE_URL="$(get_base_url 3000)"
 
 # Função para verificar se um container está rodando
 check_container() {
@@ -39,6 +62,7 @@ cd "$PROJECT_ROOT"
 
 echo ""
 echo -e "${BLUE}📦 Etapa 1: Preparando modelo e predições${NC}"
+echo "$(log_time) - Iniciando preparação..."
 
 # Verificar se Python está disponível
 if ! command -v python3 &> /dev/null; then
@@ -50,12 +74,15 @@ fi
 
 # Verificar se dependências estão instaladas
 echo -e "${YELLOW}📚 Verificando dependências Python...${NC}"
+echo "$(log_time) - Importando loguru..."
 $PYTHON_CMD -c "import loguru" &> /dev/null
 if [ $? -ne 0 ]; then
-    echo -e "${YELLOW}📦 Instalando dependências...${NC}"
-    $PYTHON_CMD -m pip install -q -r requirements.txt
+    echo -e "${YELLOW}📦 Instalando dependências (isso pode levar 1-2 minutos)...${NC}"
+    echo "$(log_time) - pip install iniciado..."
+    $PYTHON_CMD -m pip install -r requirements.txt
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Dependências instaladas${NC}"
+        echo "$(log_time) - Conclusão de dependências"
     else
         echo -e "${YELLOW}⚠️  Erro ao instalar dependências. Tentando continuar...${NC}"
     fi
@@ -65,10 +92,12 @@ fi
 
 # Verificar se modelo existe
 if [ ! -f "models/pipeline_modelo_treinado.joblib" ]; then
-    echo -e "${YELLOW}📚 Modelo não encontrado. Treinando modelo...${NC}"
+    echo -e "${YELLOW}📚 Modelo não encontrado. Treinando modelo (isso pode levar alguns minutos)...${NC}"
+    echo "$(log_time) - Treinamento iniciado..."
     $PYTHON_CMD src/treinamento.py
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Modelo treinado com sucesso${NC}"
+        echo "$(log_time) - Treinamento concluído"
     else
         echo -e "${YELLOW}⚠️  Erro ao treinar modelo, mas continuando...${NC}"
     fi
@@ -79,9 +108,11 @@ fi
 # Verificar se predições existem
 if [ ! -f "outputs/predicoes.csv" ]; then
     echo -e "${YELLOW}🔮 Predições não encontradas. Gerando predições...${NC}"
+    echo "$(log_time) - Predição iniciada..."
     $PYTHON_CMD src/predicao.py
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Predições geradas com sucesso${NC}"
+        echo "$(log_time) - Predição concluída"
     else
         echo -e "${YELLOW}⚠️  Erro ao gerar predições, mas continuando...${NC}"
     fi
@@ -106,58 +137,66 @@ echo -e "${GREEN}✅ Rede Docker pronta: $NETWORK_NAME${NC}"
 # Build e start Prometheus
 echo ""
 echo -e "${BLUE}📦 Etapa 3: Iniciando Prometheus${NC}"
+echo "$(log_time) - Build do Prometheus iniciado..."
 cd monitoring/prometheus
 if [ ! -f "Dockerfile.prometheus" ]; then
     echo "❌ Dockerfile.prometheus não encontrado!"
     exit 1
 fi
 
-docker build -t prometheus-mlops -f Dockerfile.prometheus . --quiet
+docker build -t prometheus-mlops -f Dockerfile.prometheus .
 docker run -d \
     --name prometheus \
     --network "$NETWORK_NAME" \
     -p 9090:9090 \
     prometheus-mlops
 
-echo -e "${GREEN}✅ Prometheus iniciado em http://localhost:9090${NC}"
+echo -e "${GREEN}✅ Prometheus iniciado em ${PROMETHEUS_BASE_URL}${NC}"
+echo "$(log_time) - Prometheus pronto"
 
 # Build e start Grafana
 echo ""
 echo -e "${BLUE}📊 Etapa 4: Iniciando Grafana${NC}"
+echo "$(log_time) - Build do Grafana iniciado..."
 cd ../grafana
 if [ ! -f "Dockerfile.grafana" ]; then
     echo "❌ Dockerfile.grafana não encontrado!"
     exit 1
 fi
 
-docker build -t grafana-mlops -f Dockerfile.grafana . --quiet
+docker build -t grafana-mlops -f Dockerfile.grafana .
 docker run -d \
     --name grafana \
     --network "$NETWORK_NAME" \
     -p 3000:3000 \
+    -e "GF_SERVER_DOMAIN=$([ -n "${CODESPACE_NAME:-}" ] && echo "${CODESPACE_NAME}-3000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}" || echo "localhost")" \
+    -e "GF_SERVER_ROOT_URL=${GRAFANA_BASE_URL}/" \
     grafana-mlops
 
-echo -e "${GREEN}✅ Grafana iniciado em http://localhost:3000${NC}"
+echo -e "${GREEN}✅ Grafana iniciado em ${GRAFANA_BASE_URL}${NC}"
 echo -e "   Credenciais: ${YELLOW}admin / admin${NC}"
+echo "$(log_time) - Grafana pronto"
 
 # Build e start API
 echo ""
 echo -e "${BLUE}🚀 Etapa 5: Iniciando API de Churn${NC}"
+echo "$(log_time) - Build da API iniciado..."
 cd "$PROJECT_ROOT"
 if [ ! -f "Dockerfile.api" ]; then
     echo "❌ Dockerfile.api não encontrado!"
     exit 1
 fi
 
-docker build -t api-churn -f Dockerfile.api . --quiet
+docker build -t api-churn -f Dockerfile.api .
 docker run -d \
     --name api-churn \
     --network "$NETWORK_NAME" \
     -p 8000:8000 \
     api-churn
 
-echo -e "${GREEN}✅ API iniciada em http://localhost:8000${NC}"
-echo -e "   Documentação: ${BLUE}http://localhost:8000/docs${NC}"
+echo -e "${GREEN}✅ API iniciada em ${API_BASE_URL}${NC}"
+echo -e "   Documentação: ${BLUE}${API_BASE_URL}/docs${NC}"
+echo "$(log_time) - API pronto"
 
 # Aguardar containers iniciarem
 echo ""
@@ -167,6 +206,7 @@ sleep 10
 # Verificar saúde dos containers
 echo ""
 echo -e "${BLUE}🔍 Etapa 6: Verificando saúde dos containers${NC}"
+echo "$(log_time) - Iniciando health checks..."
 
 # Check Prometheus
 if curl -s http://localhost:9090/-/healthy > /dev/null; then
@@ -205,14 +245,15 @@ fi
 echo ""
 echo "=========================================="
 echo -e "${GREEN}✅ STACK INICIADA COM SUCESSO!${NC}"
+echo "$(log_time) - Stack pronta para uso"
 echo "=========================================="
 echo ""
 echo "📊 URLs de acesso:"
-echo -e "   • API:        ${BLUE}http://localhost:8000${NC}"
-echo -e "   • API Docs:   ${BLUE}http://localhost:8000/docs${NC}"
-echo -e "   • Metrics:    ${BLUE}http://localhost:8000/metrics${NC}"
-echo -e "   • Prometheus: ${BLUE}http://localhost:9090${NC}"
-echo -e "   • Grafana:    ${BLUE}http://localhost:3000${NC} (admin/admin)"
+echo -e "   • API:        ${BLUE}${API_BASE_URL}${NC}"
+echo -e "   • API Docs:   ${BLUE}${API_BASE_URL}/docs${NC}"
+echo -e "   • Metrics:    ${BLUE}${API_BASE_URL}/metrics${NC}"
+echo -e "   • Prometheus: ${BLUE}${PROMETHEUS_BASE_URL}${NC}"
+echo -e "   • Grafana:    ${BLUE}${GRAFANA_BASE_URL}${NC} (admin/admin)"
 echo ""
 echo "🎯 Dashboards do Grafana:"
 echo "   1. API Health & Performance"
