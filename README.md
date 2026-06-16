@@ -87,6 +87,9 @@ cd mlops-monitoring-prep
 - 📊 **Prometheus**: http://localhost:9090
 - 📈 **Grafana**: http://localhost:3000 (admin/admin)
 
+> 📘 **Entenda o fluxo completo do comando (visão executiva + didática):**
+> [FLUXO_START_MONITORING.md](tutorial/FLUXO_START_MONITORING.md)
+
 ### Opção 2: Passo a Passo Manual
 
 ```bash
@@ -243,6 +246,7 @@ uvicorn src.api_churn:app --host 0.0.0.0 --port 8000 --reload
 | 📈 [**GRAFANA.md**](tutorial/GRAFANA.md) | Dashboards, painéis, visualizações | 60 min |
 | 🐳 [**DOCKER_API.md**](tutorial/DOCKER_API.md) | Containers, builds, deploy | 30 min |
 | 🌐 [**API_CHURN_README.md**](tutorial/API_CHURN_README.md) | Endpoints, FastAPI, testes | 30 min |
+| 🚀 [**FLUXO_START_MONITORING.md**](tutorial/FLUXO_START_MONITORING.md) | Fluxo completo do startup da stack de monitoramento | 20 min |
 
 ### Planejamento de Implementação
 
